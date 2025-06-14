@@ -1,13 +1,24 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, TrendingUp, DollarSign, Eye, Globe, Users, MapPin } from "lucide-react";
-import { Property } from "@/pages/Index";
+import { PropertyWithImages } from "@/hooks/useProperties";
 
 interface DashboardContentProps {
-  properties: Property[];
+  properties: PropertyWithImages[];
+  loading: boolean;
 }
 
-export function DashboardContent({ properties }: DashboardContentProps) {
+export function DashboardContent({ properties, loading }: DashboardContentProps) {
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="text-lg text-gray-400">Carregando dados...</div>
+        </div>
+      </div>
+    );
+  }
+
   const totalProperties = properties.length;
   const availableProperties = properties.filter(p => p.status === "available").length;
   const soldProperties = properties.filter(p => p.status === "sold").length;

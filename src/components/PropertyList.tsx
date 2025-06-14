@@ -5,16 +5,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, MapPin, Bed, Bath, Square, Plus, Filter } from "lucide-react";
-import { Property } from "@/pages/Index";
+import { PropertyWithImages } from "@/hooks/useProperties";
 
 interface PropertyListProps {
-  properties: Property[];
+  properties: PropertyWithImages[];
+  loading: boolean;
   onAddNew: () => void;
 }
 
-export function PropertyList({ properties, onAddNew }: PropertyListProps) {
+export function PropertyList({ properties, loading, onAddNew }: PropertyListProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="text-lg text-gray-400">Carregando propriedades...</div>
+        </div>
+      </div>
+    );
+  }
 
   const filteredProperties = properties.filter(property => {
     const statusMatch = statusFilter === "all" || property.status === statusFilter;
@@ -22,7 +33,7 @@ export function PropertyList({ properties, onAddNew }: PropertyListProps) {
     return statusMatch && typeMatch;
   });
 
-  const getStatusBadge = (status: Property["status"]) => {
+  const getStatusBadge = (status: PropertyWithImages["status"]) => {
     const variants = {
       available: "bg-green-600 text-white",
       sold: "bg-blue-600 text-white", 
@@ -36,13 +47,13 @@ export function PropertyList({ properties, onAddNew }: PropertyListProps) {
     };
 
     return (
-      <Badge className={variants[status]}>
-        {labels[status]}
+      <Badge className={variants[status || "available"]}>
+        {labels[status || "available"]}
       </Badge>
     );
   };
 
-  const getTypeLabel = (type: Property["type"]) => {
+  const getTypeLabel = (type: PropertyWithImages["type"]) => {
     const labels = {
       house: "Casa",
       apartment: "Apartamento", 
@@ -102,7 +113,15 @@ export function PropertyList({ properties, onAddNew }: PropertyListProps) {
           <Card key={property.id} className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
             <CardHeader className="p-0">
               <div className="h-48 bg-gray-700 rounded-t-lg flex items-center justify-center">
-                <Building2 className="h-12 w-12 text-gray-500" />
+                {property.property_images && property.property_images.length > 0 ? (
+                  <img 
+                    src={property.property_images[0].image_url} 
+                    alt={property.title}
+                    className="w-full h-full object-cover rounded-t-lg"
+                  />
+                ) : (
+                  <Building2 className="h-12 w-12 text-gray-500" />
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-4">
