@@ -6,6 +6,9 @@ import { DashboardHeader } from "@/components/DashboardHeader";
 import { DashboardContent } from "@/components/DashboardContent";
 import { PropertyForm } from "@/components/PropertyForm";
 import { PropertyList } from "@/components/PropertyList";
+import { ReportsView } from "@/components/ReportsView";
+import { PortalsView } from "@/components/PortalsView";
+import { ClientsView } from "@/components/ClientsView";
 import { useProperties } from "@/hooks/useProperties";
 
 const Index = () => {
