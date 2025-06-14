@@ -6,6 +6,7 @@ import { PropertyWithImages } from "@/hooks/useProperties";
 import { PropertyFormFields } from "./PropertyFormFields";
 import { PropertyImageManager } from "./PropertyImageManager";
 import { usePropertyEdit } from "@/hooks/usePropertyEdit";
+import { useEffect } from "react";
 
 interface PropertyEditFormProps {
   property: PropertyWithImages;
@@ -29,9 +30,20 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
     setImagesToDelete,
   } = usePropertyEdit(property);
 
-  const onFormSubmit = (e: React.FormEvent) => {
+  // Garantir que os dados do formulário reflitam mudanças nos props iniciais
+  useEffect(() => {
+    setExistingImages(property.property_images || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [property.id]); // Só quando edita outro imóvel, reseta imagens existentes
+
+  const onFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    handleSubmit(onSubmit);
+    // Log para depuração: mostrar dados enviados
+    console.log("🚀 Enviando formData para update:", formData);
+    await handleSubmit(() => {
+      // Após update, chamar callback — normalmente este callback fecha o modal e o dashboard
+      onSubmit();
+    });
   };
 
   return (
