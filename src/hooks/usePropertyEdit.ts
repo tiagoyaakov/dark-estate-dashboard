@@ -91,13 +91,11 @@ export function usePropertyEdit(property: PropertyWithImages) {
     return Promise.all(uploadPromises);
   };
 
-  // Corrija para deletar todas de fato antes de prosseguir
   const deleteMarkedImages = async () => {
     if (imagesToDelete.length === 0) return;
 
     console.log('🗑️ Deletando imagens marcadas:', imagesToDelete);
 
-    // Use Promise.all para aguardar todos deletes antes de dar ok!
     const deletePromises = imagesToDelete.map(async (imageId) => {
       const { error } = await supabase
         .from('property_images')
@@ -127,7 +125,6 @@ export function usePropertyEdit(property: PropertyWithImages) {
     setLoading(true);
 
     try {
-      // LOG para depuração: antes de atualizar
       console.log('📝 Atualizando dados na tabela properties para ID:', property.id);
       console.log('🔎 Campos a serem atualizados:', {
         title: formData.title,
@@ -162,7 +159,6 @@ export function usePropertyEdit(property: PropertyWithImages) {
         .eq('id', property.id)
         .select();
 
-      // LOG de resposta
       console.log("🔄 Resultado do update properties:", { propertyError, updatedRows });
 
       if (propertyError) {
@@ -174,7 +170,7 @@ export function usePropertyEdit(property: PropertyWithImages) {
         throw new Error("Nenhuma propriedade foi atualizada. Verifique o campo ID.");
       }
 
-      // 2. Delete marked images, aguarde!
+      // 2. Delete marked images
       await deleteMarkedImages();
 
       // 3. Upload new images if any

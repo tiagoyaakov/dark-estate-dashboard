@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Building2 } from "lucide-react";
@@ -29,18 +30,14 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
     setImagesToDelete,
   } = usePropertyEdit(property);
 
-  // Garantir que os dados do formulário reflitam mudanças nos props iniciais
   useEffect(() => {
     setExistingImages(property.property_images || []);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [property.id]); // Só quando edita outro imóvel, reseta imagens existentes
+  }, [property.id, setExistingImages]);
 
   const onFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Log para depuração: mostrar dados enviados
     console.log("🚀 Enviando formData para update:", formData);
     await handleSubmit(() => {
-      // Após update, chamar callback — normalmente este callback fecha o modal e o dashboard
       if (typeof onSubmit === "function") {
         onSubmit();
       }
