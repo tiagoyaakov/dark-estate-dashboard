@@ -99,13 +99,13 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white">
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
           <AppSidebar currentView={currentView} onViewChange={setCurrentView} />
           <div className="flex-1 flex flex-col">
             <DashboardHeader />
-            <main className="flex-1 p-6">
+            <main className="flex-1 p-6 bg-gradient-to-br from-gray-950/50 to-gray-900/50">
               {renderContent()}
             </main>
           </div>

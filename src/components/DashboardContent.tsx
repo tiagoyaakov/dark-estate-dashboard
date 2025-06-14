@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, TrendingUp, DollarSign, Eye } from "lucide-react";
+import { Building2, TrendingUp, DollarSign, Eye, Globe, Users, MapPin } from "lucide-react";
 import { Property } from "@/pages/Index";
 
 interface DashboardContentProps {
@@ -15,6 +15,15 @@ export function DashboardContent({ properties }: DashboardContentProps) {
   
   const totalValue = properties.reduce((sum, property) => sum + property.price, 0);
   const averagePrice = totalProperties > 0 ? totalValue / totalProperties : 0;
+
+  // Simulando dados de origem dos clientes
+  const clientOrigins = [
+    { source: "OLX", count: 45, percentage: 35, color: "bg-blue-500" },
+    { source: "ZAP Imóveis", count: 32, percentage: 25, color: "bg-green-500" },
+    { source: "Viva Real", count: 28, percentage: 22, color: "bg-purple-500" },
+    { source: "Facebook", count: 15, percentage: 12, color: "bg-indigo-500" },
+    { source: "Google Ads", count: 8, percentage: 6, color: "bg-yellow-500" },
+  ];
 
   const stats = [
     {
@@ -56,9 +65,9 @@ export function DashboardContent({ properties }: DashboardContentProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <Card key={stat.title} className="bg-gray-800 border-gray-700">
+          <Card key={stat.title} className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">
+              <CardTitle className="text-sm font-medium text-gray-300">
                 {stat.title}
               </CardTitle>
               <stat.icon className="h-4 w-4 text-gray-400" />
@@ -73,31 +82,37 @@ export function DashboardContent({ properties }: DashboardContentProps) {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-gray-800 border-gray-700">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-white">Propriedades Recentes</CardTitle>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Propriedades Recentes
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {properties.slice(0, 5).map((property) => (
-                <div key={property.id} className="flex items-center justify-between">
+                <div key={property.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-700/30 hover:bg-gray-700/50 transition-colors">
                   <div className="flex items-center space-x-3">
-                    <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-white" />
+                    <div className="h-10 w-10 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-blue-400" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-white">{property.title}</p>
-                      <p className="text-xs text-gray-400">{property.city}, {property.state}</p>
+                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {property.city}, {property.state}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-white">
                       R$ {(property.price / 1000).toFixed(0)}k
                     </p>
-                    <p className={`text-xs ${
-                      property.status === "available" ? "text-green-400" : 
-                      property.status === "sold" ? "text-blue-400" : "text-yellow-400"
+                    <p className={`text-xs px-2 py-1 rounded-full ${
+                      property.status === "available" ? "text-green-400 bg-green-400/10" : 
+                      property.status === "sold" ? "text-blue-400 bg-blue-400/10" : "text-yellow-400 bg-yellow-400/10"
                     }`}>
                       {property.status === "available" ? "Disponível" : 
                        property.status === "sold" ? "Vendido" : "Alugado"}
@@ -109,35 +124,67 @@ export function DashboardContent({ properties }: DashboardContentProps) {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-white">Distribuição por Tipo</CardTitle>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Origem dos Clientes
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { type: "house", label: "Casas", count: properties.filter(p => p.type === "house").length },
-                { type: "apartment", label: "Apartamentos", count: properties.filter(p => p.type === "apartment").length },
-                { type: "commercial", label: "Comercial", count: properties.filter(p => p.type === "commercial").length },
-                { type: "land", label: "Terrenos", count: properties.filter(p => p.type === "land").length },
-              ].map((item) => (
-                <div key={item.type} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">{item.label}</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="h-2 w-20 bg-gray-700 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-blue-500 rounded-full"
-                        style={{ width: `${totalProperties > 0 ? (item.count / totalProperties) * 100 : 0}%` }}
-                      />
+              {clientOrigins.map((origin) => (
+                <div key={origin.source} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">{origin.source}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400">{origin.count}</span>
+                      <span className="text-xs font-medium text-white">{origin.percentage}%</span>
                     </div>
-                    <span className="text-sm font-medium text-white w-8 text-right">{item.count}</span>
+                  </div>
+                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${origin.color} rounded-full transition-all duration-300`}
+                      style={{ width: `${origin.percentage}%` }}
+                    />
                   </div>
                 </div>
               ))}
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-300 flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    Total de Leads
+                  </span>
+                  <span className="text-white font-medium">128</span>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-white">Distribuição por Tipo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { type: "house", label: "Casas", count: properties.filter(p => p.type === "house").length, icon: "🏠" },
+              { type: "apartment", label: "Apartamentos", count: properties.filter(p => p.type === "apartment").length, icon: "🏢" },
+              { type: "commercial", label: "Comercial", count: properties.filter(p => p.type === "commercial").length, icon: "🏪" },
+              { type: "land", label: "Terrenos", count: properties.filter(p => p.type === "land").length, icon: "🏞️" },
+            ].map((item) => (
+              <div key={item.type} className="p-4 rounded-lg bg-gray-700/30 text-center">
+                <div className="text-2xl mb-2">{item.icon}</div>
+                <div className="text-lg font-semibold text-white">{item.count}</div>
+                <div className="text-sm text-gray-400">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
