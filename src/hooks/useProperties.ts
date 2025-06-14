@@ -48,6 +48,61 @@ export function useProperties() {
 
   useEffect(() => {
     fetchProperties();
+
+    // Configurar real-time updates para a tabela properties
+    console.log('🔄 Configurando real-time updates para propriedades...');
+    
+    const propertiesChannel = supabase
+      .channel('properties-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'properties'
+        },
+        (payload) => {
+          console.log('🔔 Mudança detectada na tabela properties:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            console.log('➕ Nova propriedade adicionada:', payload.new);
+            // Recarregar todas as propriedades para obter as imagens também
+            fetchProperties();
+          } else if (payload.eventType === 'UPDATE') {
+            console.log('✏️ Propriedade atualizada:', payload.new);
+            fetchProperties();
+          } else if (payload.eventType === 'DELETE') {
+            console.log('🗑️ Propriedade removida:', payload.old);
+            setProperties(prev => prev.filter(p => p.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    // Configurar real-time updates para a tabela property_images
+    const imagesChannel = supabase
+      .channel('property-images-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'property_images'
+        },
+        (payload) => {
+          console.log('🔔 Mudança detectada na tabela property_images:', payload);
+          // Recarregar propriedades quando imagens são adicionadas/atualizadas/removidas
+          fetchProperties();
+        }
+      )
+      .subscribe();
+
+    // Cleanup na desmontagem do componente
+    return () => {
+      console.log('🧹 Limpando subscriptions do real-time...');
+      supabase.removeChannel(propertiesChannel);
+      supabase.removeChannel(imagesChannel);
+    };
   }, []);
 
   return { properties, loading, error, refetch: fetchProperties };
