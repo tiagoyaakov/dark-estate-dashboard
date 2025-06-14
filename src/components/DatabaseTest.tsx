@@ -4,16 +4,73 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Database, Trash2 } from "lucide-react";
+import { Database, Trash2, AlertCircle } from "lucide-react";
 
 export function DatabaseTest() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<string[]>([]);
+
+  const addDiagnostic = (message: string) => {
+    setDiagnostics(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
+
+  const testConnection = async () => {
+    setLoading(true);
+    setDiagnostics([]);
+    
+    try {
+      addDiagnostic('🔍 Iniciando teste de conexão...');
+      
+      // Primeiro, vamos testar se o Supabase está configurado
+      const url = supabase.supabaseUrl;
+      const key = supabase.supabaseKey;
+      
+      addDiagnostic(`📡 URL: ${url}`);
+      addDiagnostic(`🔑 Key (primeiros 20 chars): ${key.substring(0, 20)}...`);
+      
+      // Teste simples de conectividade
+      const { data, error, count } = await supabase
+        .from('properties')
+        .select('*', { count: 'exact' })
+        .limit(1);
+
+      if (error) {
+        addDiagnostic(`❌ Erro: ${error.message}`);
+        addDiagnostic(`💡 Hint: ${error.hint || 'Sem dicas adicionais'}`);
+        addDiagnostic(`🔧 Código: ${error.code || 'Sem código'}`);
+        addDiagnostic(`📊 Details: ${JSON.stringify(error.details || {})}`);
+        
+        toast({
+          title: "Erro de Conexão",
+          description: `${error.message}. Verifique as configurações do Supabase.`,
+          variant: "destructive",
+        });
+        
+        throw error;
+      }
+
+      addDiagnostic(`✅ Conexão bem-sucedida!`);
+      addDiagnostic(`📊 Total de propriedades: ${count || 0}`);
+      addDiagnostic(`📋 Dados retornados: ${data?.length || 0} registros`);
+      
+      toast({
+        title: "Conexão OK!",
+        description: `Conectado com sucesso. ${count || 0} propriedades encontradas.`,
+      });
+
+    } catch (error: any) {
+      addDiagnostic(`💥 Erro capturado: ${error.message}`);
+      console.error('💥 Erro completo:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const insertSampleData = async () => {
     setLoading(true);
     try {
-      console.log('🏗️ Inserindo dados de exemplo...');
+      addDiagnostic('🏗️ Inserindo dados de exemplo...');
       
       const sampleProperties = [
         {
@@ -41,19 +98,6 @@ export function DatabaseTest() {
           state: "SP",
           status: "available" as const,
           description: "Apartamento bem localizado próximo ao metrô."
-        },
-        {
-          title: "Terreno Comercial",
-          type: "land" as const,
-          price: 1200000,
-          area: 500,
-          bedrooms: null,
-          bathrooms: null,
-          address: "Rua Comercial, 456",
-          city: "São Paulo",
-          state: "SP",
-          status: "available" as const,
-          description: "Excelente terreno para investimento comercial."
         }
       ];
 
@@ -63,18 +107,18 @@ export function DatabaseTest() {
         .select();
 
       if (error) {
-        console.error('❌ Erro ao inserir dados:', error);
+        addDiagnostic(`❌ Erro ao inserir: ${error.message}`);
         throw error;
       }
 
-      console.log('✅ Dados inseridos com sucesso:', data);
+      addDiagnostic(`✅ ${data.length} propriedades inseridas com sucesso`);
       toast({
         title: "Sucesso!",
         description: `${data.length} propriedades de exemplo foram adicionadas.`,
       });
 
-    } catch (error) {
-      console.error('💥 Erro:', error);
+    } catch (error: any) {
+      addDiagnostic(`💥 Erro: ${error.message}`);
       toast({
         title: "Erro",
         description: "Erro ao inserir dados de exemplo.",
@@ -88,72 +132,29 @@ export function DatabaseTest() {
   const clearAllData = async () => {
     setLoading(true);
     try {
-      console.log('🗑️ Limpando todos os dados...');
+      addDiagnostic('🗑️ Limpando todos os dados...');
       
-      // Primeiro deletar imagens
-      const { error: imagesError } = await supabase
-        .from('property_images')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-
-      if (imagesError) {
-        console.error('❌ Erro ao deletar imagens:', imagesError);
-      }
-
-      // Depois deletar propriedades
-      const { error: propertiesError } = await supabase
+      const { error } = await supabase
         .from('properties')
         .delete()
         .neq('id', '00000000-0000-0000-0000-000000000000');
 
-      if (propertiesError) {
-        console.error('❌ Erro ao deletar propriedades:', propertiesError);
-        throw propertiesError;
+      if (error) {
+        addDiagnostic(`❌ Erro ao limpar: ${error.message}`);
+        throw error;
       }
 
-      console.log('✅ Dados limpos com sucesso');
+      addDiagnostic('✅ Dados limpos com sucesso');
       toast({
         title: "Sucesso!",
         description: "Todos os dados foram removidos.",
       });
 
-    } catch (error) {
-      console.error('💥 Erro:', error);
+    } catch (error: any) {
+      addDiagnostic(`💥 Erro: ${error.message}`);
       toast({
         title: "Erro",
         description: "Erro ao limpar dados.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const testConnection = async () => {
-    setLoading(true);
-    try {
-      console.log('🔍 Testando conexão...');
-      
-      const { data, error, count } = await supabase
-        .from('properties')
-        .select('*', { count: 'exact' });
-
-      if (error) {
-        console.error('❌ Erro na conexão:', error);
-        throw error;
-      }
-
-      console.log('✅ Conexão OK:', { data, count });
-      toast({
-        title: "Conexão OK!",
-        description: `Encontradas ${count || 0} propriedades no banco.`,
-      });
-
-    } catch (error) {
-      console.error('💥 Erro de conexão:', error);
-      toast({
-        title: "Erro de Conexão",
-        description: "Erro ao conectar com o banco de dados.",
         variant: "destructive",
       });
     } finally {
@@ -166,7 +167,10 @@ export function DatabaseTest() {
       <CardHeader>
         <CardTitle className="text-white flex items-center gap-2">
           <Database className="h-5 w-5" />
-          Teste do Banco de Dados
+          Diagnóstico do Banco de Dados
+          {diagnostics.length > 0 && (
+            <AlertCircle className="h-4 w-4 text-yellow-400" />
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -185,7 +189,7 @@ export function DatabaseTest() {
             disabled={loading}
             className="bg-green-600 hover:bg-green-700"
           >
-            {loading ? "Inserindo..." : "Inserir Dados de Exemplo"}
+            {loading ? "Inserindo..." : "Inserir Dados"}
           </Button>
           
           <Button
@@ -198,11 +202,24 @@ export function DatabaseTest() {
             {loading ? "Limpando..." : "Limpar Dados"}
           </Button>
         </div>
+
+        {diagnostics.length > 0 && (
+          <div className="bg-gray-900 p-4 rounded-lg border border-gray-600">
+            <h4 className="text-white font-medium mb-2">📋 Log de Diagnóstico:</h4>
+            <div className="text-sm text-gray-300 space-y-1 max-h-60 overflow-y-auto">
+              {diagnostics.map((msg, idx) => (
+                <div key={idx} className="font-mono">
+                  {msg}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         
         <div className="text-sm text-gray-400">
-          <p>• <strong>Testar Conexão:</strong> Verifica se consegue acessar o banco</p>
-          <p>• <strong>Inserir Dados:</strong> Adiciona 3 propriedades de exemplo</p>
-          <p>• <strong>Limpar Dados:</strong> Remove todas as propriedades (cuidado!)</p>
+          <p>• <strong>Testar Conexão:</strong> Verifica conectividade e exibe logs detalhados</p>
+          <p>• <strong>Inserir Dados:</strong> Adiciona propriedades de exemplo</p>
+          <p>• <strong>Limpar Dados:</strong> Remove todas as propriedades</p>
         </div>
       </CardContent>
     </Card>
