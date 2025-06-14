@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 const SUPABASE_URL = "https://vitiqschibbontjwhiim.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpdGlxc2NoaWJib250andoaWltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTI4NzksImV4cCI6MjA2NTQ4ODg3OX0.eVoqvjIUUI0eJ01LUomMLCAIAjsmOj0dI_Fz0-_wplw";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpdGlxc2NoaWJib250andoaWltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTk4MzQsImV4cCI6MjA2NTQ5NTgzNH0.kDoZJsC1Y2Hg_8E8OMnOzhcVIw0P6u_ehN9fKzmmdX4";
 
 console.log('🔧 Configuração do Supabase:');
 console.log('URL:', SUPABASE_URL);

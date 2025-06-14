@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,13 +20,7 @@ export function DatabaseTest() {
     
     try {
       addDiagnostic('🔍 Iniciando teste de conexão...');
-      
-      // Primeiro, vamos testar se o Supabase está configurado
-      const url = supabase.supabaseUrl;
-      const key = supabase.supabaseKey;
-      
-      addDiagnostic(`📡 URL: ${url}`);
-      addDiagnostic(`🔑 Key (primeiros 20 chars): ${key.substring(0, 20)}...`);
+      addDiagnostic('📡 Testando conectividade com o Supabase...');
       
       // Teste simples de conectividade
       const { data, error, count } = await supabase
