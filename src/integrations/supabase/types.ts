@@ -9,7 +9,130 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      leads: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          message: string | null
+          name: string
+          phone: string | null
+          property_id: string | null
+          source: string
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          message?: string | null
+          name: string
+          phone?: string | null
+          property_id?: string | null
+          source: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          message?: string | null
+          name?: string
+          phone?: string | null
+          property_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      properties: {
+        Row: {
+          address: string
+          area: number
+          bathrooms: number | null
+          bedrooms: number | null
+          city: string
+          created_at: string | null
+          description: string | null
+          id: string
+          price: number
+          state: string
+          status: Database["public"]["Enums"]["property_status"] | null
+          title: string
+          type: Database["public"]["Enums"]["property_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          address: string
+          area: number
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          price: number
+          state: string
+          status?: Database["public"]["Enums"]["property_status"] | null
+          title: string
+          type: Database["public"]["Enums"]["property_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string
+          area?: number
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          price?: number
+          state?: string
+          status?: Database["public"]["Enums"]["property_status"] | null
+          title?: string
+          type?: Database["public"]["Enums"]["property_type"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      property_images: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_order: number | null
+          image_url: string
+          property_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_order?: number | null
+          image_url: string
+          property_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_order?: number | null
+          image_url?: string
+          property_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +141,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      property_status: "available" | "sold" | "rented"
+      property_type: "house" | "apartment" | "commercial" | "land"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +257,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      property_status: ["available", "sold", "rented"],
+      property_type: ["house", "apartment", "commercial", "land"],
+    },
   },
 } as const

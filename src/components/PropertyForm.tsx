@@ -6,20 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2, Upload, X, Image } from "lucide-react";
-import { Property } from "@/pages/Index";
+import { ArrowLeft, Building2, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
+
+type PropertyType = Tables<'properties'>['type'];
+type PropertyStatus = Tables<'properties'>['status'];
 
 interface PropertyFormProps {
-  onSubmit: (property: Omit<Property, "id" | "createdAt">) => void;
+  onSubmit: () => void;
   onCancel: () => void;
 }
 
 export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
-    type: "" as Property["type"],
+    type: "" as PropertyType,
     price: "",
     area: "",
     bedrooms: "",
@@ -27,36 +32,68 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
     address: "",
     city: "",
     state: "",
-    status: "available" as Property["status"],
+    status: "available" as PropertyStatus,
     description: "",
   });
-  const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newImages: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      const newFiles = Array.from(files);
+      setImageFiles(prev => [...prev, ...newFiles]);
+      
+      newFiles.forEach(file => {
         const reader = new FileReader();
         reader.onload = (event) => {
           if (event.target?.result) {
-            newImages.push(event.target.result as string);
-            if (newImages.length === files.length) {
-              setImages(prev => [...prev, ...newImages]);
-            }
+            setImagePreviewUrls(prev => [...prev, event.target.result as string]);
           }
         };
         reader.readAsDataURL(file);
-      }
+      });
     }
   };
 
   const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const uploadImages = async (propertyId: string) => {
+    const uploadPromises = imageFiles.map(async (file, index) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${propertyId}/${Date.now()}_${index}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('property-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('property-images')
+        .getPublicUrl(fileName);
+
+      // Insert image record in database
+      const { error: insertError } = await supabase
+        .from('property_images')
+        .insert({
+          property_id: propertyId,
+          image_url: publicUrl,
+          image_order: index
+        });
+
+      if (insertError) throw insertError;
+      
+      return publicUrl;
+    });
+
+    return Promise.all(uploadPromises);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.title || !formData.type || !formData.price || !formData.area || !formData.address || !formData.city || !formData.state) {
@@ -68,26 +105,51 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
       return;
     }
 
-    const property: Omit<Property, "id" | "createdAt"> = {
-      title: formData.title,
-      type: formData.type,
-      price: parseFloat(formData.price),
-      area: parseFloat(formData.area),
-      bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
-      bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
-      address: formData.address,
-      city: formData.city,
-      state: formData.state,
-      status: formData.status,
-      images: images.length > 0 ? images : ["/placeholder.svg"],
-      description: formData.description,
-    };
+    setLoading(true);
 
-    onSubmit(property);
-    toast({
-      title: "Sucesso!",
-      description: "Propriedade adicionada com sucesso.",
-    });
+    try {
+      // Insert property data
+      const { data: property, error: propertyError } = await supabase
+        .from('properties')
+        .insert({
+          title: formData.title,
+          type: formData.type,
+          price: parseFloat(formData.price),
+          area: parseFloat(formData.area),
+          bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+          bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          status: formData.status,
+          description: formData.description || null,
+        })
+        .select()
+        .single();
+
+      if (propertyError) throw propertyError;
+
+      // Upload images if any
+      if (imageFiles.length > 0) {
+        await uploadImages(property.id);
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: "Propriedade adicionada com sucesso.",
+      });
+
+      onSubmit();
+    } catch (error) {
+      console.error('Error creating property:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar propriedade. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -282,12 +344,12 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
                   </label>
                 </div>
 
-                {images.length > 0 && (
+                {imagePreviewUrls.length > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {images.map((image, index) => (
+                    {imagePreviewUrls.map((imageUrl, index) => (
                       <div key={index} className="relative group">
                         <img
-                          src={image}
+                          src={imageUrl}
                           alt={`Imagem ${index + 1}`}
                           className="w-full h-24 object-cover rounded-lg bg-gray-800"
                         />
@@ -311,14 +373,16 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
                 variant="outline"
                 onClick={onCancel}
                 className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
+                disabled={loading}
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
+                disabled={loading}
               >
-                Adicionar Propriedade
+                {loading ? "Salvando..." : "Adicionar Propriedade"}
               </Button>
             </div>
           </form>
