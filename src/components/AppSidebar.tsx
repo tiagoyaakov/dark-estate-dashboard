@@ -67,8 +67,8 @@ interface AppSidebarProps {
 
 export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
   return (
-    <Sidebar className="border-r border-gray-800/50 bg-gray-900/95 backdrop-blur-sm">
-      <SidebarHeader className="p-6 border-b border-gray-800/50">
+    <Sidebar className="border-r border-gray-800 bg-gray-900 text-white">
+      <SidebarHeader className="p-6 border-b border-gray-800">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg">
             <Home className="h-5 w-5 text-white" />
@@ -82,7 +82,7 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
         </div>
       </SidebarHeader>
       
-      <SidebarContent className="px-3">
+      <SidebarContent className="px-3 bg-gray-900">
         <SidebarGroup>
           <SidebarGroupLabel className="text-gray-400 text-xs uppercase tracking-wider px-3 py-2">
             Principal
@@ -94,7 +94,13 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
                   <SidebarMenuButton 
                     asChild
                     isActive={currentView === item.view}
-                    className="hover:bg-gray-800/50 data-[active=true]:bg-gradient-to-r data-[active=true]:from-blue-600/20 data-[active=true]:to-blue-700/20 data-[active=true]:text-white data-[active=true]:border-l-2 data-[active=true]:border-blue-500 transition-all duration-200"
+                    className={`
+                      text-gray-300 hover:text-white hover:bg-gray-800/70 transition-all duration-200
+                      ${currentView === item.view 
+                        ? 'bg-gradient-to-r from-blue-600/20 to-blue-700/20 text-white border-l-2 border-blue-500' 
+                        : ''
+                      }
+                    `}
                   >
                     <button 
                       onClick={() => onViewChange(item.view)}
@@ -118,7 +124,7 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
             <SidebarMenu>
               {analyticsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="hover:bg-gray-800/50 transition-all duration-200">
+                  <SidebarMenuButton asChild className="text-gray-300 hover:text-white hover:bg-gray-800/70 transition-all duration-200">
                     <a href={item.url} className="flex items-center gap-3 px-3 py-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -138,7 +144,7 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
             <SidebarMenu>
               {secondaryItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="hover:bg-gray-800/50 transition-all duration-200">
+                  <SidebarMenuButton asChild className="text-gray-300 hover:text-white hover:bg-gray-800/70 transition-all duration-200">
                     <a href={item.url} className="flex items-center gap-3 px-3 py-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -151,8 +157,8 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-gray-800/50">
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/50 hover:bg-gray-800/70 transition-colors cursor-pointer">
+      <SidebarFooter className="p-4 border-t border-gray-800 bg-gray-900">
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/70 hover:bg-gray-800 transition-colors cursor-pointer">
           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
             <span className="text-sm font-medium text-white">A</span>
           </div>
