@@ -10,7 +10,7 @@ CREATE TYPE property_status AS ENUM ('available', 'sold', 'rented');
 
 -- Create properties table
 CREATE TABLE public.properties (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   type property_type NOT NULL,
   price DECIMAL(12,2) NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE public.properties (
 -- Create property images table
 CREATE TABLE public.property_images (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  property_id UUID REFERENCES public.properties(id) ON DELETE CASCADE,
+  property_id TEXT REFERENCES public.properties(id) ON DELETE CASCADE,
   image_url TEXT NOT NULL,
   image_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -59,7 +59,7 @@ CREATE TABLE public.leads (
   email TEXT,
   phone TEXT,
   source TEXT NOT NULL, -- 'OLX', 'ZAP Imóveis', 'Viva Real', 'Facebook', 'Google Ads', etc.
-  property_id UUID REFERENCES public.properties(id),
+  property_id TEXT REFERENCES public.properties(id),
   message TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -121,15 +121,15 @@ CREATE POLICY "Anyone can delete leads" ON public.leads
 FOR DELETE USING (true);
 
 -- Insert some sample data
-INSERT INTO public.properties (title, type, price, area, bedrooms, bathrooms, address, city, state, status, description) VALUES
-('Casa Moderna em Condomínio', 'house', 850000.00, 250.00, 4, 3, 'Rua das Flores, 123', 'São Paulo', 'SP', 'available', 'Belíssima casa em condomínio fechado com área de lazer completa.'),
-('Apartamento no Centro', 'apartment', 450000.00, 85.00, 2, 2, 'Av. Paulista, 1000', 'São Paulo', 'SP', 'rented', 'Apartamento moderno com vista para a cidade.'),
-('Terreno Comercial', 'land', 1200000.00, 500.00, null, null, 'Rua Comercial, 456', 'São Paulo', 'SP', 'available', 'Excelente terreno para empreendimento comercial.');
+INSERT INTO public.properties (id, title, type, price, area, bedrooms, bathrooms, address, city, state, status, description) VALUES
+('CASA001', 'Casa Moderna em Condomínio', 'house', 850000.00, 250.00, 4, 3, 'Rua das Flores, 123', 'São Paulo', 'SP', 'available', 'Belíssima casa em condomínio fechado com área de lazer completa.'),
+('APT001', 'Apartamento no Centro', 'apartment', 450000.00, 85.00, 2, 2, 'Av. Paulista, 1000', 'São Paulo', 'SP', 'rented', 'Apartamento moderno com vista para a cidade.'),
+('TERRENO001', 'Terreno Comercial', 'land', 1200000.00, 500.00, null, null, 'Rua Comercial, 456', 'São Paulo', 'SP', 'available', 'Excelente terreno para empreendimento comercial.');
 
 -- Insert sample leads data for dashboard
-INSERT INTO public.leads (name, email, phone, source, message) VALUES
-('João Silva', 'joao@email.com', '(11) 99999-9999', 'OLX', 'Interessado em casas'),
-('Maria Santos', 'maria@email.com', '(11) 88888-8888', 'ZAP Imóveis', 'Procuro apartamento'),
-('Pedro Costa', 'pedro@email.com', '(11) 77777-7777', 'Viva Real', 'Quero alugar'),
-('Ana Oliveira', 'ana@email.com', '(11) 66666-6666', 'Facebook', 'Primeira compra'),
-('Carlos Souza', 'carlos@email.com', '(11) 55555-5555', 'Google Ads', 'Investimento');
+INSERT INTO public.leads (name, email, phone, source, message, property_id) VALUES
+('João Silva', 'joao@email.com', '(11) 99999-9999', 'OLX', 'Interessado em casas', 'CASA001'),
+('Maria Santos', 'maria@email.com', '(11) 88888-8888', 'ZAP Imóveis', 'Procuro apartamento', 'APT001'),
+('Pedro Costa', 'pedro@email.com', '(11) 77777-7777', 'Viva Real', 'Quero alugar', null),
+('Ana Oliveira', 'ana@email.com', '(11) 66666-6666', 'Facebook', 'Primeira compra', null),
+('Carlos Souza', 'carlos@email.com', '(11) 55555-5555', 'Google Ads', 'Investimento', null);
