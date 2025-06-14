@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +40,7 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState(property.property_images || []);
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -63,45 +65,37 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
     setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
-  const removeExistingImage = async (imageId: string) => {
-    try {
-      const { error } = await supabase
-        .from('property_images')
-        .delete()
-        .eq('id', imageId);
-
-      if (error) throw error;
-
-      setExistingImages(prev => prev.filter(img => img.id !== imageId));
-      
-      toast({
-        title: "Sucesso!",
-        description: "Imagem removida com sucesso.",
-      });
-    } catch (error) {
-      console.error('Error removing image:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao remover imagem.",
-        variant: "destructive",
-      });
-    }
+  const removeExistingImage = (imageId: string) => {
+    // Instead of deleting immediately, just mark for deletion
+    setExistingImages(prev => prev.filter(img => img.id !== imageId));
+    setImagesToDelete(prev => [...prev, imageId]);
+    
+    console.log('🗑️ Imagem marcada para remoção:', imageId);
   };
 
   const uploadNewImages = async (propertyId: string) => {
+    if (imageFiles.length === 0) return [];
+
     const uploadPromises = imageFiles.map(async (file, index) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${propertyId}/${Date.now()}_${index}.${fileExt}`;
+      
+      console.log('📤 Fazendo upload da imagem:', fileName);
       
       const { error: uploadError } = await supabase.storage
         .from('property-images')
         .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('❌ Erro no upload:', uploadError);
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('property-images')
         .getPublicUrl(fileName);
+
+      console.log('🔗 URL pública gerada:', publicUrl);
 
       const { error: insertError } = await supabase
         .from('property_images')
@@ -111,12 +105,40 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
           image_order: existingImages.length + index
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('❌ Erro ao inserir no banco:', insertError);
+        throw insertError;
+      }
       
       return publicUrl;
     });
 
     return Promise.all(uploadPromises);
+  };
+
+  const deleteMarkedImages = async () => {
+    if (imagesToDelete.length === 0) return;
+
+    console.log('🗑️ Deletando imagens marcadas:', imagesToDelete);
+
+    for (const imageId of imagesToDelete) {
+      try {
+        const { error } = await supabase
+          .from('property_images')
+          .delete()
+          .eq('id', imageId);
+
+        if (error) {
+          console.error('❌ Erro ao deletar imagem:', error);
+          throw error;
+        }
+        
+        console.log('✅ Imagem deletada com sucesso:', imageId);
+      } catch (error) {
+        console.error('💥 Erro na deleção da imagem:', imageId, error);
+        // Continue with other deletions even if one fails
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,10 +153,12 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
       return;
     }
 
+    console.log('💾 Iniciando salvamento da propriedade...');
     setLoading(true);
 
     try {
-      // Update property data
+      // 1. Update property data
+      console.log('📝 Atualizando dados da propriedade...');
       const { error: propertyError } = await supabase
         .from('properties')
         .update({
@@ -152,13 +176,22 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
         })
         .eq('id', property.id);
 
-      if (propertyError) throw propertyError;
+      if (propertyError) {
+        console.error('❌ Erro ao atualizar propriedade:', propertyError);
+        throw propertyError;
+      }
 
-      // Upload new images if any
+      // 2. Delete marked images
+      await deleteMarkedImages();
+
+      // 3. Upload new images if any
       if (imageFiles.length > 0) {
+        console.log('📤 Fazendo upload de novas imagens...');
         await uploadNewImages(property.id);
       }
 
+      console.log('✅ Propriedade atualizada com sucesso!');
+      
       toast({
         title: "Sucesso!",
         description: "Propriedade atualizada com sucesso.",
@@ -166,7 +199,7 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
 
       onSubmit();
     } catch (error) {
-      console.error('Error updating property:', error);
+      console.error('💥 Erro ao atualizar propriedade:', error);
       toast({
         title: "Erro",
         description: "Erro ao atualizar propriedade. Tente novamente.",
