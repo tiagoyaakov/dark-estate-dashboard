@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building2, MapPin, Bed, Bath, Square, Plus, Filter } from "lucide-react";
 import { PropertyWithImages } from "@/hooks/useProperties";
 import { PropertyDetailsPopup } from "@/components/PropertyDetailsPopup";
+import { PropertyEditForm } from "@/components/PropertyEditForm";
 
 interface PropertyListProps {
   properties: PropertyWithImages[];
@@ -18,6 +20,8 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedProperty, setSelectedProperty] = useState<PropertyWithImages | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<PropertyWithImages | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   console.log('🏠 PropertyList - Estado atual:', { 
     propertiesCount: properties.length, 
@@ -82,6 +86,33 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
     setIsDetailsOpen(false);
     setSelectedProperty(null);
   };
+
+  const handleEditProperty = (property: PropertyWithImages) => {
+    setEditingProperty(property);
+    setIsEditOpen(true);
+  };
+
+  const handleEditSubmit = () => {
+    setIsEditOpen(false);
+    setEditingProperty(null);
+    // O real-time update já vai atualizar a lista automaticamente
+  };
+
+  const handleEditCancel = () => {
+    setIsEditOpen(false);
+    setEditingProperty(null);
+  };
+
+  // Se estiver editando, mostrar o formulário de edição
+  if (isEditOpen && editingProperty) {
+    return (
+      <PropertyEditForm
+        property={editingProperty}
+        onSubmit={handleEditSubmit}
+        onCancel={handleEditCancel}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -196,7 +227,12 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
                 >
                   Ver Detalhes
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
+                  onClick={() => handleEditProperty(property)}
+                >
                   Editar
                 </Button>
               </div>
