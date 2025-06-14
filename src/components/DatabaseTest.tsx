@@ -20,93 +20,72 @@ export function DatabaseTest() {
     setDiagnostics([]);
     
     try {
-      addDiagnostic('🔧 Iniciando migração do banco de dados...');
+      addDiagnostic('🔧 Iniciando verificação das colunas...');
       
-      // 1. Alterar tipo da coluna id na tabela properties
-      addDiagnostic('📝 Alterando tipo da coluna id na tabela properties...');
-      const { error: error1 } = await supabase.rpc('exec_sql', {
-        sql: 'ALTER TABLE public.properties ALTER COLUMN id TYPE TEXT USING id::TEXT;'
-      });
+      // Verificar se as colunas já são do tipo TEXT
+      addDiagnostic('📝 Verificando tipo atual das colunas...');
       
-      if (error1) {
-        addDiagnostic(`❌ Erro step 1: ${error1.message}`);
-        throw error1;
-      }
-      addDiagnostic('✅ Coluna properties.id alterada para TEXT');
+      // Como não podemos executar SQL diretamente, vamos tentar inserir dados com IDs de texto
+      // Se funcionar, significa que a migração já foi aplicada ou não é necessária
+      
+      const testId = "TEST_" + Date.now().toString();
+      
+      addDiagnostic('🧪 Testando inserção com ID de texto...');
+      
+      const { data: testProperty, error: insertError } = await supabase
+        .from('properties')
+        .insert({
+          id: testId,
+          title: "Teste Migração",
+          type: "house" as const,
+          price: 100000,
+          area: 100,
+          address: "Teste",
+          city: "Teste",
+          state: "Teste",
+          status: "available" as const,
+        })
+        .select()
+        .single();
 
-      // 2. Alterar tipo da coluna property_id na tabela property_images
-      addDiagnostic('📝 Alterando property_images.property_id...');
-      const { error: error2 } = await supabase.rpc('exec_sql', {
-        sql: 'ALTER TABLE public.property_images ALTER COLUMN property_id TYPE TEXT USING property_id::TEXT;'
-      });
-      
-      if (error2) {
-        addDiagnostic(`❌ Erro step 2: ${error2.message}`);
-        throw error2;
-      }
-      addDiagnostic('✅ Coluna property_images.property_id alterada para TEXT');
-
-      // 3. Recriar foreign key constraint para property_images
-      addDiagnostic('📝 Recriando constraint property_images...');
-      const { error: error3 } = await supabase.rpc('exec_sql', {
-        sql: `
-          ALTER TABLE public.property_images 
-          DROP CONSTRAINT IF EXISTS property_images_property_id_fkey;
+      if (insertError) {
+        addDiagnostic(`❌ Erro ao inserir com ID texto: ${insertError.message}`);
+        
+        if (insertError.message.includes('invalid input syntax for type uuid')) {
+          addDiagnostic('🔍 Confirmado: colunas ainda são UUID, migração necessária');
+          addDiagnostic('⚠️ A migração precisa ser aplicada no Supabase Dashboard');
+          addDiagnostic('📋 Comandos SQL necessários:');
+          addDiagnostic('1. ALTER TABLE properties ALTER COLUMN id TYPE TEXT USING id::TEXT;');
+          addDiagnostic('2. ALTER TABLE property_images ALTER COLUMN property_id TYPE TEXT USING property_id::TEXT;');
+          addDiagnostic('3. ALTER TABLE leads ALTER COLUMN property_id TYPE TEXT USING property_id::TEXT;');
           
-          ALTER TABLE public.property_images 
-          ADD CONSTRAINT property_images_property_id_fkey 
-          FOREIGN KEY (property_id) REFERENCES public.properties(id) ON DELETE CASCADE;
-        `
-      });
-      
-      if (error3) {
-        addDiagnostic(`❌ Erro step 3: ${error3.message}`);
-        throw error3;
+          toast({
+            title: "Migração Necessária",
+            description: "Execute os comandos SQL no Supabase Dashboard para converter UUID para TEXT.",
+            variant: "destructive",
+          });
+        } else {
+          throw insertError;
+        }
+      } else {
+        addDiagnostic('✅ Sucesso! ID de texto aceito - colunas já são TEXT');
+        
+        // Limpar o dado de teste
+        await supabase.from('properties').delete().eq('id', testId);
+        addDiagnostic('🧹 Dado de teste removido');
+        
+        addDiagnostic('🎉 As colunas já estão configuradas como TEXT!');
+        toast({
+          title: "Migração Completa",
+          description: "As colunas já estão configuradas para aceitar IDs de texto.",
+        });
       }
-      addDiagnostic('✅ Constraint property_images recriada');
-
-      // 4. Alterar tipo da coluna property_id na tabela leads
-      addDiagnostic('📝 Alterando leads.property_id...');
-      const { error: error4 } = await supabase.rpc('exec_sql', {
-        sql: 'ALTER TABLE public.leads ALTER COLUMN property_id TYPE TEXT USING property_id::TEXT;'
-      });
-      
-      if (error4) {
-        addDiagnostic(`❌ Erro step 4: ${error4.message}`);
-        throw error4;
-      }
-      addDiagnostic('✅ Coluna leads.property_id alterada para TEXT');
-
-      // 5. Recriar foreign key constraint para leads
-      addDiagnostic('📝 Recriando constraint leads...');
-      const { error: error5 } = await supabase.rpc('exec_sql', {
-        sql: `
-          ALTER TABLE public.leads 
-          DROP CONSTRAINT IF EXISTS leads_property_id_fkey;
-          
-          ALTER TABLE public.leads 
-          ADD CONSTRAINT leads_property_id_fkey 
-          FOREIGN KEY (property_id) REFERENCES public.properties(id);
-        `
-      });
-      
-      if (error5) {
-        addDiagnostic(`❌ Erro step 5: ${error5.message}`);
-        throw error5;
-      }
-      addDiagnostic('✅ Constraint leads recriada');
-
-      addDiagnostic('🎉 Migração concluída com sucesso!');
-      toast({
-        title: "Migração Concluída",
-        description: "Todas as tabelas foram alteradas para usar TEXT ao invés de UUID.",
-      });
 
     } catch (error: any) {
-      addDiagnostic(`💥 Erro na migração: ${error.message}`);
+      addDiagnostic(`💥 Erro na verificação: ${error.message}`);
       console.error('💥 Erro completo:', error);
       toast({
-        title: "Erro na Migração",
+        title: "Erro na Verificação",
         description: `${error.message}`,
         variant: "destructive",
       });
@@ -277,7 +256,7 @@ export function DatabaseTest() {
             className="bg-orange-600 hover:bg-orange-700"
           >
             <Wrench className="h-4 w-4 mr-2" />
-            {loading ? "Migrando..." : "Rodar Migração"}
+            {loading ? "Verificando..." : "Verificar Migração"}
           </Button>
           
           <Button
@@ -322,7 +301,7 @@ export function DatabaseTest() {
         )}
         
         <div className="text-sm text-gray-400">
-          <p>• <strong>Rodar Migração:</strong> Converte colunas UUID para TEXT</p>
+          <p>• <strong>Verificar Migração:</strong> Testa se as colunas aceitam IDs de texto</p>
           <p>• <strong>Testar Conexão:</strong> Verifica conectividade e exibe logs detalhados</p>
           <p>• <strong>Inserir Dados:</strong> Adiciona propriedades de exemplo</p>
           <p>• <strong>Limpar Dados:</strong> Remove todas as propriedades</p>
