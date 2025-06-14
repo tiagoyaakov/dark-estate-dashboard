@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +8,7 @@ type PropertyType = Tables<'properties'>['type'];
 type PropertyStatus = Tables<'properties'>['status'];
 
 interface PropertyFormData {
+  propertyCode: string;
   title: string;
   type: PropertyType;
   price: string;
@@ -26,6 +26,7 @@ export function usePropertyEdit(property: PropertyWithImages) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<PropertyFormData>({
+    propertyCode: property.id,
     title: property.title,
     type: property.type as PropertyType,
     price: property.price.toString(),
@@ -46,6 +47,28 @@ export function usePropertyEdit(property: PropertyWithImages) {
 
   const handleFormChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const checkPropertyCodeExists = async (code: string, currentId: string) => {
+    if (!code.trim() || code.trim() === currentId) return false;
+    
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('id', code.trim())
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao verificar código:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Erro ao verificar código:', error);
+      return false;
+    }
   };
 
   const uploadNewImages = async (propertyId: string) => {
@@ -112,7 +135,7 @@ export function usePropertyEdit(property: PropertyWithImages) {
   };
 
   const handleSubmit = async (onSuccess: () => void) => {
-    if (!formData.title || !formData.type || !formData.price || !formData.area || !formData.address || !formData.city || !formData.state) {
+    if (!formData.propertyCode || !formData.title || !formData.type || !formData.price || !formData.area || !formData.address || !formData.city || !formData.state) {
       toast({
         title: "Erro no formulário",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -121,53 +144,84 @@ export function usePropertyEdit(property: PropertyWithImages) {
       return;
     }
 
+    // Verificar se o código mudou e se já existe
+    if (formData.propertyCode !== property.id) {
+      const codeExists = await checkPropertyCodeExists(formData.propertyCode, property.id);
+      if (codeExists) {
+        toast({
+          title: "Código já existe",
+          description: "Este código de imóvel já está sendo usado. Por favor, escolha outro.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     console.log('💾 Iniciando salvamento da propriedade...');
     setLoading(true);
 
     try {
       console.log('📝 Atualizando dados na tabela properties para ID:', property.id);
-      console.log('🔎 Campos a serem atualizados:', {
-        title: formData.title,
-        type: formData.type,
-        price: parseFloat(formData.price),
-        area: parseFloat(formData.area),
-        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
-        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        status: formData.status,
-        description: formData.description || null,
-      });
+      
+      // Se o código mudou, precisamos atualizar o ID
+      if (formData.propertyCode !== property.id) {
+        // Primeiro, criar um novo registro com o novo ID
+        const { error: insertError } = await supabase
+          .from('properties')
+          .insert({
+            id: formData.propertyCode.trim(),
+            title: formData.title,
+            type: formData.type,
+            price: parseFloat(formData.price),
+            area: parseFloat(formData.area),
+            bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+            bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            status: formData.status,
+            description: formData.description || null,
+          });
 
-      // 1. Update property data
-      const { error: propertyError, data: updatedRows } = await supabase
-        .from('properties')
-        .update({
-          title: formData.title,
-          type: formData.type,
-          price: parseFloat(formData.price),
-          area: parseFloat(formData.area),
-          bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
-          bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          status: formData.status,
-          description: formData.description || null,
-        })
-        .eq('id', property.id)
-        .select();
+        if (insertError) throw insertError;
 
-      console.log("🔄 Resultado do update properties:", { propertyError, updatedRows });
+        // Atualizar imagens para o novo ID
+        if (existingImages.length > 0) {
+          const { error: updateImagesError } = await supabase
+            .from('property_images')
+            .update({ property_id: formData.propertyCode.trim() })
+            .eq('property_id', property.id);
 
-      if (propertyError) {
-        console.error('❌ Erro ao atualizar propriedade:', propertyError);
-        throw propertyError;
-      }
+          if (updateImagesError) throw updateImagesError;
+        }
 
-      if (!updatedRows || updatedRows.length === 0) {
-        throw new Error("Nenhuma propriedade foi atualizada. Verifique o campo ID.");
+        // Deletar o registro antigo
+        const { error: deleteError } = await supabase
+          .from('properties')
+          .delete()
+          .eq('id', property.id);
+
+        if (deleteError) throw deleteError;
+      } else {
+        // Apenas atualizar os dados existentes
+        const { error: propertyError } = await supabase
+          .from('properties')
+          .update({
+            title: formData.title,
+            type: formData.type,
+            price: parseFloat(formData.price),
+            area: parseFloat(formData.area),
+            bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+            bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            status: formData.status,
+            description: formData.description || null,
+          })
+          .eq('id', property.id);
+
+        if (propertyError) throw propertyError;
       }
 
       // 2. Delete marked images
@@ -212,5 +266,6 @@ export function usePropertyEdit(property: PropertyWithImages) {
     setImagePreviewUrls,
     setExistingImages,
     setImagesToDelete,
+    checkPropertyCodeExists,
   };
 }

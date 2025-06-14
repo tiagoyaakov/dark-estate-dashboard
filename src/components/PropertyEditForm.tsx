@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Building2 } from "lucide-react";
@@ -72,7 +71,8 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
           <form onSubmit={onFormSubmit} className="space-y-6">
             <PropertyFormFields 
               formData={formData} 
-              onChange={handleFormChange} 
+              onChange={handleFormChange}
+              readOnlyCode={true}
             />
 
             <PropertyImageManager

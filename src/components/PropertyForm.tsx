@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +21,9 @@ interface PropertyFormProps {
 export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [checkingCode, setCheckingCode] = useState(false);
   const [formData, setFormData] = useState({
+    propertyCode: "",
     title: "",
     type: "" as PropertyType,
     price: "",
@@ -37,6 +38,45 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   });
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+
+  const checkPropertyCodeExists = async (code: string) => {
+    if (!code.trim()) return false;
+    
+    setCheckingCode(true);
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('id', code.trim())
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao verificar código:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Erro ao verificar código:', error);
+      return false;
+    } finally {
+      setCheckingCode(false);
+    }
+  };
+
+  const handleCodeBlur = async () => {
+    if (!formData.propertyCode.trim()) return;
+
+    const exists = await checkPropertyCodeExists(formData.propertyCode);
+    if (exists) {
+      toast({
+        title: "Código já existe",
+        description: "Este código de imóvel já está sendo usado. Por favor, escolha outro.",
+        variant: "destructive",
+      });
+      setFormData(prev => ({ ...prev, propertyCode: "" }));
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -96,7 +136,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.type || !formData.price || !formData.area || !formData.address || !formData.city || !formData.state) {
+    if (!formData.propertyCode || !formData.title || !formData.type || !formData.price || !formData.area || !formData.address || !formData.city || !formData.state) {
       toast({
         title: "Erro no formulário",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -105,13 +145,25 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
       return;
     }
 
+    // Verificar novamente se o código já existe
+    const codeExists = await checkPropertyCodeExists(formData.propertyCode);
+    if (codeExists) {
+      toast({
+        title: "Código já existe",
+        description: "Este código de imóvel já está sendo usado. Por favor, escolha outro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Insert property data
+      // Insert property data com ID customizado
       const { data: property, error: propertyError } = await supabase
         .from('properties')
         .insert({
+          id: formData.propertyCode.trim(),
           title: formData.title,
           type: formData.type,
           price: parseFloat(formData.price),
@@ -183,6 +235,23 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="propertyCode" className="text-gray-300">Código do Imóvel *</Label>
+                <Input
+                  id="propertyCode"
+                  value={formData.propertyCode}
+                  onChange={(e) => handleChange("propertyCode", e.target.value)}
+                  onBlur={handleCodeBlur}
+                  placeholder="Ex: CASA001, APT123"
+                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
+                  required
+                  disabled={checkingCode}
+                />
+                {checkingCode && (
+                  <p className="text-sm text-gray-400">Verificando código...</p>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="title" className="text-gray-300">Título *</Label>
                 <Input
