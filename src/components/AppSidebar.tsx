@@ -39,11 +39,13 @@ const analyticsItems = [
     title: "Relatórios",
     url: "#",
     icon: TrendingUp,
+    view: "reports" as const,
   },
   {
     title: "Portais",
     url: "#",
     icon: Globe,
+    view: "portals" as const,
   },
 ];
 
@@ -52,6 +54,7 @@ const secondaryItems = [
     title: "Clientes",
     url: "#",
     icon: Users,
+    view: "clients" as const,
   },
   {
     title: "Configurações",
@@ -62,7 +65,7 @@ const secondaryItems = [
 
 interface AppSidebarProps {
   currentView: string;
-  onViewChange: (view: "dashboard" | "properties" | "add-property") => void;
+  onViewChange: (view: "dashboard" | "properties" | "add-property" | "reports" | "portals" | "clients") => void;
 }
 
 export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
@@ -124,11 +127,24 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
             <SidebarMenu>
               {analyticsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="text-gray-300 hover:text-white hover:bg-gray-800/70 transition-all duration-200">
-                    <a href={item.url} className="flex items-center gap-3 px-3 py-2">
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={currentView === item.view}
+                    className={`
+                      text-gray-300 hover:text-white hover:bg-gray-800/70 transition-all duration-200
+                      ${currentView === item.view 
+                        ? 'bg-gradient-to-r from-blue-600/20 to-blue-700/20 text-white border-l-2 border-blue-500' 
+                        : ''
+                      }
+                    `}
+                  >
+                    <button 
+                      onClick={() => onViewChange(item.view)}
+                      className="flex items-center gap-3 w-full px-3 py-2"
+                    >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
-                    </a>
+                    </button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -144,11 +160,31 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
             <SidebarMenu>
               {secondaryItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="text-gray-300 hover:text-white hover:bg-gray-800/70 transition-all duration-200">
-                    <a href={item.url} className="flex items-center gap-3 px-3 py-2">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </a>
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={currentView === item.view}
+                    className={`
+                      text-gray-300 hover:text-white hover:bg-gray-800/70 transition-all duration-200
+                      ${currentView === item.view 
+                        ? 'bg-gradient-to-r from-blue-600/20 to-blue-700/20 text-white border-l-2 border-blue-500' 
+                        : ''
+                      }
+                    `}
+                  >
+                    {item.view ? (
+                      <button 
+                        onClick={() => onViewChange(item.view)}
+                        className="flex items-center gap-3 w-full px-3 py-2"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </button>
+                    ) : (
+                      <a href={item.url} className="flex items-center gap-3 px-3 py-2">
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </a>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

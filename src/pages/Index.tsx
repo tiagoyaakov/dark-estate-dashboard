@@ -9,7 +9,7 @@ import { PropertyList } from "@/components/PropertyList";
 import { useProperties } from "@/hooks/useProperties";
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<"dashboard" | "properties" | "add-property">("dashboard");
+  const [currentView, setCurrentView] = useState<"dashboard" | "properties" | "add-property" | "reports" | "portals" | "clients">("dashboard");
   const { properties, loading, refetch } = useProperties();
 
   const handlePropertySubmit = () => {
@@ -25,6 +25,12 @@ const Index = () => {
         return <PropertyList properties={properties} loading={loading} onAddNew={() => setCurrentView("add-property")} />;
       case "add-property":
         return <PropertyForm onSubmit={handlePropertySubmit} onCancel={() => setCurrentView("properties")} />;
+      case "reports":
+        return <ReportsView />;
+      case "portals":
+        return <PortalsView />;
+      case "clients":
+        return <ClientsView />;
       default:
         return <DashboardContent properties={properties} loading={loading} />;
     }
