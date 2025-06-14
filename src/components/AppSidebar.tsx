@@ -74,7 +74,7 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
             <Home className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+            <span className="text-xl font-bold text-white">
               ImobiPro
             </span>
             <span className="text-xs text-gray-400">Gestão Imobiliária</span>
