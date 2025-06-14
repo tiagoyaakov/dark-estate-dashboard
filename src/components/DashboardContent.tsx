@@ -30,24 +30,13 @@ export function DashboardContent({ properties, loading }: DashboardContentProps)
   const totalValue = properties.reduce((sum, property) => sum + property.price, 0);
   const averagePrice = totalProperties > 0 ? totalValue / totalProperties : 0;
 
-  // Dados reais dos clientes por status
-  const clientsByStatus = {
-    new: clients.filter(c => c.status === "new").length,
-    contacted: clients.filter(c => c.status === "contacted").length,
-    qualified: clients.filter(c => c.status === "qualified").length,
-    converted: clients.filter(c => c.status === "converted").length,
-    lost: clients.filter(c => c.status === "lost").length,
-  };
+  // Dados reais dos clientes por origem
+  const clientsBySource = clients.reduce((acc, client) => {
+    acc[client.source] = (acc[client.source] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
-  // Simulando origem dos clientes baseado nos dados reais
   const totalClients = clients.length;
-  const clientOrigins = [
-    { source: "OLX", count: Math.floor(totalClients * 0.35), percentage: 35, color: "bg-blue-500" },
-    { source: "ZAP Imóveis", count: Math.floor(totalClients * 0.25), percentage: 25, color: "bg-green-500" },
-    { source: "Viva Real", count: Math.floor(totalClients * 0.22), percentage: 22, color: "bg-purple-500" },
-    { source: "Facebook", count: Math.floor(totalClients * 0.12), percentage: 12, color: "bg-indigo-500" },
-    { source: "Google Ads", count: Math.floor(totalClients * 0.06), percentage: 6, color: "bg-yellow-500" },
-  ];
 
   const stats = [
     {
@@ -157,32 +146,23 @@ export function DashboardContent({ properties, loading }: DashboardContentProps)
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Status dos Clientes
+              Origem dos Clientes
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">Novos</span>
-                  <span className="text-sm font-medium text-white">{clientsByStatus.new}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">Contatados</span>
-                  <span className="text-sm font-medium text-white">{clientsByStatus.contacted}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">Qualificados</span>
-                  <span className="text-sm font-medium text-white">{clientsByStatus.qualified}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">Convertidos</span>
-                  <span className="text-sm font-medium text-white">{clientsByStatus.converted}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">Perdidos</span>
-                  <span className="text-sm font-medium text-white">{clientsByStatus.lost}</span>
-                </div>
+                {Object.entries(clientsBySource).map(([source, count]) => (
+                  <div key={source} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">{source}</span>
+                    <span className="text-sm font-medium text-white">{count}</span>
+                  </div>
+                ))}
+                {Object.keys(clientsBySource).length === 0 && (
+                  <div className="text-center py-4 text-gray-400">
+                    Nenhum cliente cadastrado
+                  </div>
+                )}
               </div>
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <div className="flex items-center justify-between text-sm">

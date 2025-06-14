@@ -4,11 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Mail, Phone, Plus, Filter, User } from "lucide-react";
+import { Users, Mail, Phone, Plus, Filter, User, Globe } from "lucide-react";
 import { useClients } from "@/hooks/useClients";
 
 export function ClientsView() {
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const { clients, loading, error } = useClients();
 
   if (loading) {
@@ -32,32 +32,27 @@ export function ClientsView() {
   }
 
   const filteredClients = clients.filter(client => {
-    return statusFilter === "all" || client.status === statusFilter;
+    return sourceFilter === "all" || client.source === sourceFilter;
   });
 
-  const getStatusBadge = (status: string) => {
+  const getSourceBadge = (source: string) => {
     const variants = {
-      new: "bg-blue-600 text-white",
-      contacted: "bg-yellow-600 text-black",
-      qualified: "bg-green-600 text-white",
-      converted: "bg-purple-600 text-white",
-      lost: "bg-red-600 text-white"
-    };
-    
-    const labels = {
-      new: "Novo",
-      contacted: "Contatado",
-      qualified: "Qualificado",
-      converted: "Convertido",
-      lost: "Perdido"
+      "OLX": "bg-blue-600 text-white",
+      "ZAP Imóveis": "bg-green-600 text-white",
+      "Viva Real": "bg-purple-600 text-white",
+      "Facebook": "bg-indigo-600 text-white",
+      "Google Ads": "bg-yellow-600 text-black"
     };
 
     return (
-      <Badge className={variants[status as keyof typeof variants] || "bg-gray-600 text-white"}>
-        {labels[status as keyof typeof labels] || status}
+      <Badge className={variants[source as keyof typeof variants] || "bg-gray-600 text-white"}>
+        {source}
       </Badge>
     );
   };
+
+  // Get unique sources for filter
+  const uniqueSources = [...new Set(clients.map(client => client.source))];
 
   return (
     <div className="space-y-6">
@@ -74,17 +69,15 @@ export function ClientsView() {
 
       <div className="flex items-center gap-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
         <Filter className="h-5 w-5 text-gray-400" />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
           <SelectTrigger className="w-48 bg-gray-900 border-gray-600 text-white">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder="Origem" />
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-600">
-            <SelectItem value="all">Todos os Status</SelectItem>
-            <SelectItem value="new">Novo</SelectItem>
-            <SelectItem value="contacted">Contatado</SelectItem>
-            <SelectItem value="qualified">Qualificado</SelectItem>
-            <SelectItem value="converted">Convertido</SelectItem>
-            <SelectItem value="lost">Perdido</SelectItem>
+            <SelectItem value="all">Todas as Origens</SelectItem>
+            {uniqueSources.map(source => (
+              <SelectItem key={source} value={source}>{source}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         
@@ -102,14 +95,14 @@ export function ClientsView() {
                   <User className="h-5 w-5" />
                   {client.name}
                 </CardTitle>
-                {getStatusBadge(client.status)}
+                {getSourceBadge(client.source)}
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
                 <div className="flex items-center text-gray-400 text-sm">
                   <Mail className="h-4 w-4 mr-2" />
-                  {client.email}
+                  {client.email || 'Não informado'}
                 </div>
                 <div className="flex items-center text-gray-400 text-sm">
                   <Phone className="h-4 w-4 mr-2" />
@@ -118,16 +111,18 @@ export function ClientsView() {
               </div>
 
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Interesse:</span>
-                <span className="text-white font-medium">{client.interest || 'Não especificado'}</span>
+                <span className="text-gray-400">Origem:</span>
+                <span className="text-white font-medium">{client.source}</span>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Orçamento:</span>
-                <span className="text-white font-medium">
-                  {client.budget ? `R$ ${(client.budget / 1000).toFixed(0)}k` : 'Não informado'}
-                </span>
-              </div>
+              {client.message && (
+                <div className="flex items-start justify-between text-sm">
+                  <span className="text-gray-400">Mensagem:</span>
+                  <span className="text-white font-medium text-right max-w-32 truncate" title={client.message}>
+                    {client.message}
+                  </span>
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Criado em:</span>
