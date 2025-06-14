@@ -41,23 +41,22 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   const checkPropertyCodeExists = async (code: string) => {
     if (!code.trim()) return false;
     
-    console.log('🔍 Verificando se código existe:', code.trim());
+    console.log('🔍 Verificando se código existe (TEXT):', code.trim());
     setCheckingCode(true);
     try {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from('properties')
-        .select('id')
-        .eq('id', code.trim())
-        .maybeSingle();
+        .select('*', { count: 'exact', head: true })
+        .eq('id', code.trim());
 
-      console.log('📊 Resultado da verificação:', { data, error });
+      console.log('📊 Resultado da verificação (count):', { count, error });
 
       if (error) {
         console.error('❌ Erro ao verificar código:', error);
         return false;
       }
 
-      const exists = !!data;
+      const exists = (count || 0) > 0;
       console.log('✅ Código existe?', exists);
       return exists;
     } catch (error) {
@@ -254,6 +253,21 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCodeBlur = async () => {
+    if (!formData.propertyCode.trim()) return;
+
+    console.log('👀 Verificando código ao sair do campo:', formData.propertyCode);
+    const exists = await checkPropertyCodeExists(formData.propertyCode);
+    if (exists) {
+      toast({
+        title: "Código já existe",
+        description: "Este código de imóvel já está sendo usado. Por favor, escolha outro.",
+        variant: "destructive",
+      });
+      setFormData(prev => ({ ...prev, propertyCode: "" }));
     }
   };
 

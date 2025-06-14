@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,21 +53,25 @@ export function usePropertyEdit(property: PropertyWithImages) {
   const checkPropertyCodeExists = async (code: string, currentId: string) => {
     if (!code.trim() || code.trim() === currentId) return false;
     
+    console.log('🔍 Verificando se código existe (TEXT) - Edit:', code.trim());
     try {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from('properties')
-        .select('id')
-        .eq('id', code.trim())
-        .single();
+        .select('*', { count: 'exact', head: true })
+        .eq('id', code.trim());
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao verificar código:', error);
+      console.log('📊 Resultado da verificação (count) - Edit:', { count, error });
+
+      if (error) {
+        console.error('❌ Erro ao verificar código - Edit:', error);
         return false;
       }
 
-      return !!data;
+      const exists = (count || 0) > 0;
+      console.log('✅ Código existe? - Edit:', exists);
+      return exists;
     } catch (error) {
-      console.error('Erro ao verificar código:', error);
+      console.error('💥 Erro na verificação - Edit:', error);
       return false;
     }
   };
@@ -251,6 +256,69 @@ export function usePropertyEdit(property: PropertyWithImages) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const uploadNewImages = async (propertyId: string) => {
+    if (imageFiles.length === 0) return [];
+
+    const uploadPromises = imageFiles.map(async (file, index) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${propertyId}/${Date.now()}_${index}.${fileExt}`;
+
+      console.log('📤 Fazendo upload da imagem:', fileName);
+
+      const { error: uploadError } = await supabase.storage
+        .from('property-images')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        console.error('❌ Erro no upload:', uploadError);
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('property-images')
+        .getPublicUrl(fileName);
+
+      console.log('🔗 URL pública gerada:', publicUrl);
+
+      const { error: insertError } = await supabase
+        .from('property_images')
+        .insert({
+          property_id: propertyId,
+          image_url: publicUrl,
+          image_order: existingImages.length + index
+        });
+
+      if (insertError) {
+        console.error('❌ Erro ao inserir no banco:', insertError);
+        throw insertError;
+      }
+      
+      return publicUrl;
+    });
+
+    return Promise.all(uploadPromises);
+  };
+
+  const deleteMarkedImages = async () => {
+    if (imagesToDelete.length === 0) return;
+
+    console.log('🗑️ Deletando imagens marcadas:', imagesToDelete);
+
+    const deletePromises = imagesToDelete.map(async (imageId) => {
+      const { error } = await supabase
+        .from('property_images')
+        .delete()
+        .eq('id', imageId);
+
+      if (error) {
+        console.error('❌ Erro ao deletar imagem:', error);
+        throw error;
+      }
+      console.log('✅ Imagem deletada com sucesso:', imageId);
+    });
+    await Promise.all(deletePromises);
   };
 
   return {
