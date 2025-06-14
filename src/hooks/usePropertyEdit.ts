@@ -127,9 +127,24 @@ export function usePropertyEdit(property: PropertyWithImages) {
     setLoading(true);
 
     try {
+      // LOG para depuração: antes de atualizar
+      console.log('📝 Atualizando dados na tabela properties para ID:', property.id);
+      console.log('🔎 Campos a serem atualizados:', {
+        title: formData.title,
+        type: formData.type,
+        price: parseFloat(formData.price),
+        area: parseFloat(formData.area),
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        status: formData.status,
+        description: formData.description || null,
+      });
+
       // 1. Update property data
-      console.log('📝 Atualizando dados da propriedade...');
-      const { error: propertyError } = await supabase
+      const { error: propertyError, data: updatedRows } = await supabase
         .from('properties')
         .update({
           title: formData.title,
@@ -144,11 +159,19 @@ export function usePropertyEdit(property: PropertyWithImages) {
           status: formData.status,
           description: formData.description || null,
         })
-        .eq('id', property.id);
+        .eq('id', property.id)
+        .select();
+
+      // LOG de resposta
+      console.log("🔄 Resultado do update properties:", { propertyError, updatedRows });
 
       if (propertyError) {
         console.error('❌ Erro ao atualizar propriedade:', propertyError);
         throw propertyError;
+      }
+
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error("Nenhuma propriedade foi atualizada. Verifique o campo ID.");
       }
 
       // 2. Delete marked images, aguarde!

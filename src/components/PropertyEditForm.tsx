@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Building2 } from "lucide-react";
@@ -42,7 +41,9 @@ export function PropertyEditForm({ property, onSubmit, onCancel }: PropertyEditF
     console.log("🚀 Enviando formData para update:", formData);
     await handleSubmit(() => {
       // Após update, chamar callback — normalmente este callback fecha o modal e o dashboard
-      onSubmit();
+      if (typeof onSubmit === "function") {
+        onSubmit();
+      }
     });
   };
 
