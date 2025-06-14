@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { ArrowLeft, Building2, Upload, X, Image } from "lucide-react";
 import { Property } from "@/pages/Index";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,6 +30,31 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
     status: "available" as Property["status"],
     description: "",
   });
+  const [images, setImages] = useState<string[]>([]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newImages: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            newImages.push(event.target.result as string);
+            if (newImages.length === files.length) {
+              setImages(prev => [...prev, ...newImages]);
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +79,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
       city: formData.city,
       state: formData.state,
       status: formData.status,
-      images: ["/placeholder.svg"],
+      images: images.length > 0 ? images : ["/placeholder.svg"],
       description: formData.description,
     };
 
@@ -233,6 +258,51 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
                 placeholder="Descreva as características e diferenciais do imóvel..."
                 className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400 min-h-[100px]"
               />
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-gray-300">Imagens</Label>
+              <div className="space-y-4">
+                <div className="flex items-center justify-center w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-900 hover:bg-gray-800 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                      <p className="mb-2 text-sm text-gray-400">
+                        <span className="font-semibold">Clique para fazer upload</span> ou arraste e solte
+                      </p>
+                      <p className="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 5MB cada)</p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                </div>
+
+                {images.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {images.map((image, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={image}
+                          alt={`Imagem ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg bg-gray-800"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-4 pt-4">
