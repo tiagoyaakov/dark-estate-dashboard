@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, MapPin, Bed, Bath, Square, Plus, Filter } from "lucide-react";
 import { PropertyWithImages } from "@/hooks/useProperties";
-import { DatabaseTest } from "./DatabaseTest";
 
 interface PropertyListProps {
   properties: PropertyWithImages[];
@@ -82,17 +82,6 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
           <Plus className="h-4 w-4 mr-2" />
           Adicionar Imóvel
         </Button>
-      </div>
-
-      {/* Componente de teste do banco - remover depois */}
-      <DatabaseTest />
-
-      {/* Debug info - remover depois */}
-      <div className="p-4 bg-gray-700 rounded-lg text-sm text-gray-300">
-        <strong>🔧 Debug Info:</strong><br/>
-        Total de propriedades: {properties.length}<br/>
-        Propriedades filtradas: {filteredProperties.length}<br/>
-        Status do loading: {loading ? 'Carregando...' : 'Concluído'}
       </div>
 
       <div className="flex items-center gap-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
