@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, MapPin, Bed, Bath, Square, Plus, Filter } from "lucide-react";
 import { PropertyWithImages } from "@/hooks/useProperties";
+import { DatabaseTest } from "./DatabaseTest";
 
 interface PropertyListProps {
   properties: PropertyWithImages[];
@@ -82,6 +83,9 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
           Adicionar Imóvel
         </Button>
       </div>
+
+      {/* Componente de teste do banco - remover depois */}
+      <DatabaseTest />
 
       {/* Debug info - remover depois */}
       <div className="p-4 bg-gray-700 rounded-lg text-sm text-gray-300">
