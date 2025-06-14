@@ -256,21 +256,6 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
     }
   };
 
-  const handleCodeBlur = async () => {
-    if (!formData.propertyCode.trim()) return;
-
-    console.log('👀 Verificando código ao sair do campo:', formData.propertyCode);
-    const exists = await checkPropertyCodeExists(formData.propertyCode);
-    if (exists) {
-      toast({
-        title: "Código já existe",
-        description: "Este código de imóvel já está sendo usado. Por favor, escolha outro.",
-        variant: "destructive",
-      });
-      setFormData(prev => ({ ...prev, propertyCode: "" }));
-    }
-  };
-
   const handleChange = (field: string, value: string) => {
     console.log('✏️ Alterando campo:', field, '=', value);
     setFormData(prev => ({ ...prev, [field]: value }));

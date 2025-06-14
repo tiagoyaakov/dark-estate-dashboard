@@ -258,69 +258,6 @@ export function usePropertyEdit(property: PropertyWithImages) {
     }
   };
 
-  const uploadNewImages = async (propertyId: string) => {
-    if (imageFiles.length === 0) return [];
-
-    const uploadPromises = imageFiles.map(async (file, index) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${propertyId}/${Date.now()}_${index}.${fileExt}`;
-
-      console.log('📤 Fazendo upload da imagem:', fileName);
-
-      const { error: uploadError } = await supabase.storage
-        .from('property-images')
-        .upload(fileName, file);
-
-      if (uploadError) {
-        console.error('❌ Erro no upload:', uploadError);
-        throw uploadError;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('property-images')
-        .getPublicUrl(fileName);
-
-      console.log('🔗 URL pública gerada:', publicUrl);
-
-      const { error: insertError } = await supabase
-        .from('property_images')
-        .insert({
-          property_id: propertyId,
-          image_url: publicUrl,
-          image_order: existingImages.length + index
-        });
-
-      if (insertError) {
-        console.error('❌ Erro ao inserir no banco:', insertError);
-        throw insertError;
-      }
-      
-      return publicUrl;
-    });
-
-    return Promise.all(uploadPromises);
-  };
-
-  const deleteMarkedImages = async () => {
-    if (imagesToDelete.length === 0) return;
-
-    console.log('🗑️ Deletando imagens marcadas:', imagesToDelete);
-
-    const deletePromises = imagesToDelete.map(async (imageId) => {
-      const { error } = await supabase
-        .from('property_images')
-        .delete()
-        .eq('id', imageId);
-
-      if (error) {
-        console.error('❌ Erro ao deletar imagem:', error);
-        throw error;
-      }
-      console.log('✅ Imagem deletada com sucesso:', imageId);
-    });
-    await Promise.all(deletePromises);
-  };
-
   return {
     formData,
     loading,
