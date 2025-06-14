@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, MapPin, Bed, Bath, Square, Plus, Filter } from "lucide-react";
 import { PropertyWithImages } from "@/hooks/useProperties";
+import { PropertyDetailsPopup } from "@/components/PropertyDetailsPopup";
 
 interface PropertyListProps {
   properties: PropertyWithImages[];
@@ -16,6 +16,8 @@ interface PropertyListProps {
 export function PropertyList({ properties, loading, onAddNew }: PropertyListProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [selectedProperty, setSelectedProperty] = useState<PropertyWithImages | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   console.log('🏠 PropertyList - Estado atual:', { 
     propertiesCount: properties.length, 
@@ -69,6 +71,16 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
       land: "Terreno"
     };
     return labels[type];
+  };
+
+  const handleViewDetails = (property: PropertyWithImages) => {
+    setSelectedProperty(property);
+    setIsDetailsOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setIsDetailsOpen(false);
+    setSelectedProperty(null);
   };
 
   return (
@@ -176,7 +188,12 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
               </p>
 
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
+                  onClick={() => handleViewDetails(property)}
+                >
                   Ver Detalhes
                 </Button>
                 <Button variant="outline" size="sm" className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700">
@@ -206,6 +223,12 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
           </Button>
         </div>
       )}
+
+      <PropertyDetailsPopup
+        property={selectedProperty}
+        open={isDetailsOpen}
+        onClose={handleCloseDetails}
+      />
     </div>
   );
 }
