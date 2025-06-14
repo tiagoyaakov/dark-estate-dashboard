@@ -1,14 +1,13 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2, Upload, X } from "lucide-react";
+import { ArrowLeft, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
+import { PropertyFormFields } from "./PropertyFormFields";
+import { PropertyImageManager } from "./PropertyImageManager";
 
 type PropertyType = Tables<'properties'>['type'];
 type PropertyStatus = Tables<'properties'>['status'];
@@ -42,6 +41,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   const checkPropertyCodeExists = async (code: string) => {
     if (!code.trim()) return false;
     
+    console.log('🔍 Verificando se código existe:', code.trim());
     setCheckingCode(true);
     try {
       const { data, error } = await supabase
@@ -50,14 +50,18 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
         .eq('id', code.trim())
         .single();
 
+      console.log('📊 Resultado da verificação:', { data, error });
+
       if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao verificar código:', error);
+        console.error('❌ Erro ao verificar código:', error);
         return false;
       }
 
-      return !!data;
+      const exists = !!data;
+      console.log('✅ Código existe?', exists);
+      return exists;
     } catch (error) {
-      console.error('Erro ao verificar código:', error);
+      console.error('💥 Erro na verificação:', error);
       return false;
     } finally {
       setCheckingCode(false);
@@ -67,6 +71,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   const handleCodeBlur = async () => {
     if (!formData.propertyCode.trim()) return;
 
+    console.log('👀 Verificando código ao sair do campo:', formData.propertyCode);
     const exists = await checkPropertyCodeExists(formData.propertyCode);
     if (exists) {
       toast({
@@ -78,43 +83,30 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newFiles = Array.from(files);
-      setImageFiles(prev => [...prev, ...newFiles]);
-      
-      newFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            setImagePreviewUrls(prev => [...prev, event.target.result as string]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
-    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
-  };
-
   const uploadImages = async (propertyId: string) => {
+    console.log('📤 Iniciando upload de imagens para propriedade:', propertyId);
+    console.log('📸 Quantidade de imagens:', imageFiles.length);
+
     const uploadPromises = imageFiles.map(async (file, index) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${propertyId}/${Date.now()}_${index}.${fileExt}`;
       
+      console.log('⬆️ Fazendo upload:', fileName);
+
       const { error: uploadError } = await supabase.storage
         .from('property-images')
         .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('❌ Erro no upload:', uploadError);
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('property-images')
         .getPublicUrl(fileName);
+
+      console.log('🔗 URL pública:', publicUrl);
 
       // Insert image record in database
       const { error: insertError } = await supabase
@@ -125,8 +117,12 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
           image_order: index
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('❌ Erro ao inserir no banco:', insertError);
+        throw insertError;
+      }
       
+      console.log('✅ Imagem salva com sucesso');
       return publicUrl;
     });
 
@@ -136,7 +132,11 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🚀 Iniciando submissão do formulário');
+    console.log('📝 Dados do formulário:', formData);
+
     if (!formData.propertyCode || !formData.title || !formData.type || !formData.price || !formData.area || !formData.address || !formData.city || !formData.state) {
+      console.log('❌ Campos obrigatórios não preenchidos');
       toast({
         title: "Erro no formulário",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -146,8 +146,10 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
     }
 
     // Verificar novamente se o código já existe
+    console.log('🔍 Verificação final do código...');
     const codeExists = await checkPropertyCodeExists(formData.propertyCode);
     if (codeExists) {
+      console.log('❌ Código já existe na verificação final');
       toast({
         title: "Código já existe",
         description: "Este código de imóvel já está sendo usado. Por favor, escolha outro.",
@@ -159,6 +161,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
     setLoading(true);
 
     try {
+      console.log('💾 Inserindo propriedade no banco...');
       // Insert property data com ID customizado
       const { data: property, error: propertyError } = await supabase
         .from('properties')
@@ -179,13 +182,23 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
         .select()
         .single();
 
-      if (propertyError) throw propertyError;
+      console.log('📊 Resultado da inserção:', { property, propertyError });
+
+      if (propertyError) {
+        console.error('❌ Erro ao inserir propriedade:', propertyError);
+        throw propertyError;
+      }
+
+      console.log('✅ Propriedade inserida com sucesso:', property);
 
       // Upload images if any
       if (imageFiles.length > 0) {
+        console.log('📤 Iniciando upload de imagens...');
         await uploadImages(property.id);
+        console.log('✅ Upload de imagens concluído');
       }
 
+      console.log('🎉 Processo concluído com sucesso');
       toast({
         title: "Sucesso!",
         description: "Propriedade adicionada com sucesso.",
@@ -193,10 +206,10 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
 
       onSubmit();
     } catch (error) {
-      console.error('Error creating property:', error);
+      console.error('💥 Erro geral:', error);
       toast({
         title: "Erro",
-        description: "Erro ao adicionar propriedade. Tente novamente.",
+        description: `Erro ao adicionar propriedade: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         variant: "destructive",
       });
     } finally {
@@ -205,6 +218,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   };
 
   const handleChange = (field: string, value: string) => {
+    console.log('✏️ Alterando campo:', field, '=', value);
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -234,207 +248,26 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="propertyCode" className="text-gray-300">Código do Imóvel *</Label>
-                <Input
-                  id="propertyCode"
-                  value={formData.propertyCode}
-                  onChange={(e) => handleChange("propertyCode", e.target.value)}
-                  onBlur={handleCodeBlur}
-                  placeholder="Ex: CASA001, APT123"
-                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
-                  required
-                  disabled={checkingCode}
-                />
-                {checkingCode && (
-                  <p className="text-sm text-gray-400">Verificando código...</p>
-                )}
-              </div>
+            <PropertyFormFields 
+              formData={formData} 
+              onChange={handleChange}
+              onCodeBlur={handleCodeBlur}
+              checkingCode={checkingCode}
+            />
 
-              <div className="space-y-2">
-                <Label htmlFor="title" className="text-gray-300">Título *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => handleChange("title", e.target.value)}
-                  placeholder="Ex: Casa Moderna em Condomínio"
-                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="type" className="text-gray-300">Tipo *</Label>
-                <Select value={formData.type} onValueChange={(value) => handleChange("type", value)}>
-                  <SelectTrigger className="bg-gray-900 border-gray-600 text-white">
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-600">
-                    <SelectItem value="house">Casa</SelectItem>
-                    <SelectItem value="apartment">Apartamento</SelectItem>
-                    <SelectItem value="commercial">Comercial</SelectItem>
-                    <SelectItem value="land">Terreno</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="price" className="text-gray-300">Preço (R$) *</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => handleChange("price", e.target.value)}
-                  placeholder="850000"
-                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="area" className="text-gray-300">Área (m²) *</Label>
-                <Input
-                  id="area"
-                  type="number"
-                  value={formData.area}
-                  onChange={(e) => handleChange("area", e.target.value)}
-                  placeholder="250"
-                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bedrooms" className="text-gray-300">Quartos</Label>
-                <Input
-                  id="bedrooms"
-                  type="number"
-                  value={formData.bedrooms}
-                  onChange={(e) => handleChange("bedrooms", e.target.value)}
-                  placeholder="4"
-                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bathrooms" className="text-gray-300">Banheiros</Label>
-                <Input
-                  id="bathrooms"
-                  type="number"
-                  value={formData.bathrooms}
-                  onChange={(e) => handleChange("bathrooms", e.target.value)}
-                  placeholder="3"
-                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address" className="text-gray-300">Endereço *</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => handleChange("address", e.target.value)}
-                  placeholder="Rua das Flores, 123"
-                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="city" className="text-gray-300">Cidade *</Label>
-                <Input
-                  id="city"
-                  value={formData.city}
-                  onChange={(e) => handleChange("city", e.target.value)}
-                  placeholder="São Paulo"
-                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="state" className="text-gray-300">Estado *</Label>
-                <Input
-                  id="state"
-                  value={formData.state}
-                  onChange={(e) => handleChange("state", e.target.value)}
-                  placeholder="SP"
-                  className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status" className="text-gray-300">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => handleChange("status", value)}>
-                  <SelectTrigger className="bg-gray-900 border-gray-600 text-white">
-                    <SelectValue placeholder="Selecione o status" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-600">
-                    <SelectItem value="available">Disponível</SelectItem>
-                    <SelectItem value="sold">Vendido</SelectItem>
-                    <SelectItem value="rented">Alugado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-gray-300">Descrição</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleChange("description", e.target.value)}
-                placeholder="Descreva as características e diferenciais do imóvel..."
-                className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400 min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-4">
-              <Label className="text-gray-300">Imagens</Label>
-              <div className="space-y-4">
-                <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-900 hover:bg-gray-800 transition-colors">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 mb-2 text-gray-400" />
-                      <p className="mb-2 text-sm text-gray-400">
-                        <span className="font-semibold">Clique para fazer upload</span> ou arraste e solte
-                      </p>
-                      <p className="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 5MB cada)</p>
-                    </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageChange}
-                    />
-                  </label>
-                </div>
-
-                {imagePreviewUrls.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {imagePreviewUrls.map((imageUrl, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={imageUrl}
-                          alt={`Imagem ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg bg-gray-800"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <PropertyImageManager
+              existingImages={[]}
+              onImagesChange={() => {}}
+              onNewImagesChange={(files, previews) => {
+                console.log('🖼️ Novas imagens selecionadas:', files.length);
+                setImageFiles(files);
+                setImagePreviewUrls(previews);
+              }}
+              onImagesToDeleteChange={() => {}}
+              newImageFiles={imageFiles}
+              newImagePreviews={imagePreviewUrls}
+              imagesToDelete={[]}
+            />
 
             <div className="flex gap-4 pt-4">
               <Button

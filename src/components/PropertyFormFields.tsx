@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,9 +20,17 @@ interface PropertyFormFieldsProps {
   };
   onChange: (field: string, value: string) => void;
   readOnlyCode?: boolean;
+  onCodeBlur?: () => void;
+  checkingCode?: boolean;
 }
 
-export function PropertyFormFields({ formData, onChange, readOnlyCode = false }: PropertyFormFieldsProps) {
+export function PropertyFormFields({ 
+  formData, 
+  onChange, 
+  readOnlyCode = false,
+  onCodeBlur,
+  checkingCode = false
+}: PropertyFormFieldsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
@@ -32,11 +39,16 @@ export function PropertyFormFields({ formData, onChange, readOnlyCode = false }:
           id="propertyCode"
           value={formData.propertyCode}
           onChange={(e) => onChange("propertyCode", e.target.value)}
+          onBlur={onCodeBlur}
           placeholder="Ex: CASA001, APT123"
           className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
           required
           readOnly={readOnlyCode}
+          disabled={checkingCode}
         />
+        {checkingCode && (
+          <p className="text-sm text-gray-400">Verificando código...</p>
+        )}
       </div>
 
       <div className="space-y-2">
