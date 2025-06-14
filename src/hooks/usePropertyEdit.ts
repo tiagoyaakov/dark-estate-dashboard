@@ -54,9 +54,9 @@ export function usePropertyEdit(property: PropertyWithImages) {
     const uploadPromises = imageFiles.map(async (file, index) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${propertyId}/${Date.now()}_${index}.${fileExt}`;
-      
+
       console.log('📤 Fazendo upload da imagem:', fileName);
-      
+
       const { error: uploadError } = await supabase.storage
         .from('property-images')
         .upload(fileName, file);
@@ -91,28 +91,26 @@ export function usePropertyEdit(property: PropertyWithImages) {
     return Promise.all(uploadPromises);
   };
 
+  // Corrija para deletar todas de fato antes de prosseguir
   const deleteMarkedImages = async () => {
     if (imagesToDelete.length === 0) return;
 
     console.log('🗑️ Deletando imagens marcadas:', imagesToDelete);
 
-    for (const imageId of imagesToDelete) {
-      try {
-        const { error } = await supabase
-          .from('property_images')
-          .delete()
-          .eq('id', imageId);
+    // Use Promise.all para aguardar todos deletes antes de dar ok!
+    const deletePromises = imagesToDelete.map(async (imageId) => {
+      const { error } = await supabase
+        .from('property_images')
+        .delete()
+        .eq('id', imageId);
 
-        if (error) {
-          console.error('❌ Erro ao deletar imagem:', error);
-          throw error;
-        }
-        
-        console.log('✅ Imagem deletada com sucesso:', imageId);
-      } catch (error) {
-        console.error('💥 Erro na deleção da imagem:', imageId, error);
+      if (error) {
+        console.error('❌ Erro ao deletar imagem:', error);
+        throw error;
       }
-    }
+      console.log('✅ Imagem deletada com sucesso:', imageId);
+    });
+    await Promise.all(deletePromises);
   };
 
   const handleSubmit = async (onSuccess: () => void) => {
@@ -153,7 +151,7 @@ export function usePropertyEdit(property: PropertyWithImages) {
         throw propertyError;
       }
 
-      // 2. Delete marked images
+      // 2. Delete marked images, aguarde!
       await deleteMarkedImages();
 
       // 3. Upload new images if any
