@@ -68,7 +68,7 @@ interface AppSidebarProps {
 export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
   return (
     <Sidebar className="border-r border-gray-800 bg-gray-900 text-white">
-      <SidebarHeader className="p-6 border-b border-gray-800">
+      <SidebarHeader className="p-6 border-b border-gray-800 bg-gray-900">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg">
             <Home className="h-5 w-5 text-white" />
