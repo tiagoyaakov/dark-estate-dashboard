@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, TrendingUp, DollarSign, Eye, Globe, Users, MapPin } from "lucide-react";
 import { PropertyWithImages } from "@/hooks/useProperties";
+import { useClients } from "@/hooks/useClients";
 
 interface DashboardContentProps {
   properties: PropertyWithImages[];
@@ -9,7 +10,9 @@ interface DashboardContentProps {
 }
 
 export function DashboardContent({ properties, loading }: DashboardContentProps) {
-  if (loading) {
+  const { clients, loading: clientsLoading } = useClients();
+
+  if (loading || clientsLoading) {
     return (
       <div className="space-y-6">
         <div className="text-center py-12">
@@ -27,13 +30,23 @@ export function DashboardContent({ properties, loading }: DashboardContentProps)
   const totalValue = properties.reduce((sum, property) => sum + property.price, 0);
   const averagePrice = totalProperties > 0 ? totalValue / totalProperties : 0;
 
-  // Simulando dados de origem dos clientes
+  // Dados reais dos clientes por status
+  const clientsByStatus = {
+    new: clients.filter(c => c.status === "new").length,
+    contacted: clients.filter(c => c.status === "contacted").length,
+    qualified: clients.filter(c => c.status === "qualified").length,
+    converted: clients.filter(c => c.status === "converted").length,
+    lost: clients.filter(c => c.status === "lost").length,
+  };
+
+  // Simulando origem dos clientes baseado nos dados reais
+  const totalClients = clients.length;
   const clientOrigins = [
-    { source: "OLX", count: 45, percentage: 35, color: "bg-blue-500" },
-    { source: "ZAP Imóveis", count: 32, percentage: 25, color: "bg-green-500" },
-    { source: "Viva Real", count: 28, percentage: 22, color: "bg-purple-500" },
-    { source: "Facebook", count: 15, percentage: 12, color: "bg-indigo-500" },
-    { source: "Google Ads", count: 8, percentage: 6, color: "bg-yellow-500" },
+    { source: "OLX", count: Math.floor(totalClients * 0.35), percentage: 35, color: "bg-blue-500" },
+    { source: "ZAP Imóveis", count: Math.floor(totalClients * 0.25), percentage: 25, color: "bg-green-500" },
+    { source: "Viva Real", count: Math.floor(totalClients * 0.22), percentage: 22, color: "bg-purple-500" },
+    { source: "Facebook", count: Math.floor(totalClients * 0.12), percentage: 12, color: "bg-indigo-500" },
+    { source: "Google Ads", count: Math.floor(totalClients * 0.06), percentage: 6, color: "bg-yellow-500" },
   ];
 
   const stats = [
@@ -59,10 +72,10 @@ export function DashboardContent({ properties, loading }: DashboardContentProps)
       changeType: "positive" as const,
     },
     {
-      title: "Vendidos/Alugados",
-      value: (soldProperties + rentedProperties).toString(),
-      icon: TrendingUp,
-      change: "+3.1%",
+      title: "Total de Leads",
+      value: totalClients.toString(),
+      icon: Users,
+      change: "+8.1%",
       changeType: "positive" as const,
     },
   ];
@@ -131,6 +144,11 @@ export function DashboardContent({ properties, loading }: DashboardContentProps)
                   </div>
                 </div>
               ))}
+              {properties.length === 0 && (
+                <div className="text-center py-4 text-gray-400">
+                  Nenhuma propriedade cadastrada
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -138,36 +156,41 @@ export function DashboardContent({ properties, loading }: DashboardContentProps)
         <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              Origem dos Clientes
+              <Users className="h-5 w-5" />
+              Status dos Clientes
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {clientOrigins.map((origin) => (
-                <div key={origin.source} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-300">{origin.source}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">{origin.count}</span>
-                      <span className="text-xs font-medium text-white">{origin.percentage}%</span>
-                    </div>
-                  </div>
-                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full ${origin.color} rounded-full transition-all duration-300`}
-                      style={{ width: `${origin.percentage}%` }}
-                    />
-                  </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Novos</span>
+                  <span className="text-sm font-medium text-white">{clientsByStatus.new}</span>
                 </div>
-              ))}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Contatados</span>
+                  <span className="text-sm font-medium text-white">{clientsByStatus.contacted}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Qualificados</span>
+                  <span className="text-sm font-medium text-white">{clientsByStatus.qualified}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Convertidos</span>
+                  <span className="text-sm font-medium text-white">{clientsByStatus.converted}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Perdidos</span>
+                  <span className="text-sm font-medium text-white">{clientsByStatus.lost}</span>
+                </div>
+              </div>
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-300 flex items-center gap-1">
-                    <Users className="h-4 w-4" />
+                    <Globe className="h-4 w-4" />
                     Total de Leads
                   </span>
-                  <span className="text-white font-medium">128</span>
+                  <span className="text-white font-medium">{totalClients}</span>
                 </div>
               </div>
             </div>

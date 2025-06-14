@@ -5,39 +5,31 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, Mail, Phone, Plus, Filter, User } from "lucide-react";
+import { useClients } from "@/hooks/useClients";
 
 export function ClientsView() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { clients, loading, error } = useClients();
 
-  const clients = [
-    {
-      id: 1,
-      name: "João Silva",
-      email: "joao@email.com",
-      phone: "(11) 99999-9999",
-      status: "active",
-      properties: 2,
-      lastContact: "2024-01-15"
-    },
-    {
-      id: 2,
-      name: "Maria Santos",
-      email: "maria@email.com",
-      phone: "(11) 88888-8888",
-      status: "interested",
-      properties: 0,
-      lastContact: "2024-01-10"
-    },
-    {
-      id: 3,
-      name: "Pedro Costa",
-      email: "pedro@email.com",
-      phone: "(11) 77777-7777",
-      status: "inactive",
-      properties: 1,
-      lastContact: "2023-12-20"
-    }
-  ];
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="text-lg text-gray-400">Carregando clientes...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="text-lg text-red-400">Erro ao carregar clientes: {error}</div>
+        </div>
+      </div>
+    );
+  }
 
   const filteredClients = clients.filter(client => {
     return statusFilter === "all" || client.status === statusFilter;
@@ -45,20 +37,24 @@ export function ClientsView() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      active: "bg-green-600 text-white",
-      interested: "bg-yellow-600 text-black",
-      inactive: "bg-gray-600 text-white"
+      new: "bg-blue-600 text-white",
+      contacted: "bg-yellow-600 text-black",
+      qualified: "bg-green-600 text-white",
+      converted: "bg-purple-600 text-white",
+      lost: "bg-red-600 text-white"
     };
     
     const labels = {
-      active: "Ativo",
-      interested: "Interessado",
-      inactive: "Inativo"
+      new: "Novo",
+      contacted: "Contatado",
+      qualified: "Qualificado",
+      converted: "Convertido",
+      lost: "Perdido"
     };
 
     return (
-      <Badge className={variants[status as keyof typeof variants]}>
-        {labels[status as keyof typeof labels]}
+      <Badge className={variants[status as keyof typeof variants] || "bg-gray-600 text-white"}>
+        {labels[status as keyof typeof labels] || status}
       </Badge>
     );
   };
@@ -84,9 +80,11 @@ export function ClientsView() {
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-600">
             <SelectItem value="all">Todos os Status</SelectItem>
-            <SelectItem value="active">Ativo</SelectItem>
-            <SelectItem value="interested">Interessado</SelectItem>
-            <SelectItem value="inactive">Inativo</SelectItem>
+            <SelectItem value="new">Novo</SelectItem>
+            <SelectItem value="contacted">Contatado</SelectItem>
+            <SelectItem value="qualified">Qualificado</SelectItem>
+            <SelectItem value="converted">Convertido</SelectItem>
+            <SelectItem value="lost">Perdido</SelectItem>
           </SelectContent>
         </Select>
         
@@ -115,18 +113,27 @@ export function ClientsView() {
                 </div>
                 <div className="flex items-center text-gray-400 text-sm">
                   <Phone className="h-4 w-4 mr-2" />
-                  {client.phone}
+                  {client.phone || 'Não informado'}
                 </div>
               </div>
 
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Propriedades:</span>
-                <span className="text-white font-medium">{client.properties}</span>
+                <span className="text-gray-400">Interesse:</span>
+                <span className="text-white font-medium">{client.interest || 'Não especificado'}</span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Último contato:</span>
-                <span className="text-white font-medium">{client.lastContact}</span>
+                <span className="text-gray-400">Orçamento:</span>
+                <span className="text-white font-medium">
+                  {client.budget ? `R$ ${(client.budget / 1000).toFixed(0)}k` : 'Não informado'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-400">Criado em:</span>
+                <span className="text-white font-medium">
+                  {new Date(client.created_at).toLocaleDateString('pt-BR')}
+                </span>
               </div>
 
               <div className="flex gap-2 pt-2">
