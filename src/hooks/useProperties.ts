@@ -17,7 +17,9 @@ export function useProperties() {
 
   const fetchProperties = async () => {
     try {
+      console.log('🔍 Iniciando busca de propriedades...');
       setLoading(true);
+      
       const { data, error } = await supabase
         .from('properties')
         .select(`
@@ -26,9 +28,18 @@ export function useProperties() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      console.log('📊 Resposta do Supabase:', { data, error });
+      
+      if (error) {
+        console.error('❌ Erro ao buscar propriedades:', error);
+        throw error;
+      }
+      
+      console.log('✅ Propriedades carregadas:', data?.length || 0);
       setProperties(data || []);
+      setError(null);
     } catch (err) {
+      console.error('💥 Erro na função fetchProperties:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar propriedades');
     } finally {
       setLoading(false);

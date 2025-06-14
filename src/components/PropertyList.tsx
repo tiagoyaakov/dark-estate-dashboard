@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +16,12 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
+  console.log('🏠 PropertyList - Estado atual:', { 
+    propertiesCount: properties.length, 
+    loading,
+    properties: properties.slice(0, 2) // Log apenas as primeiras 2 para debug
+  });
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -32,6 +37,8 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
     const typeMatch = typeFilter === "all" || property.type === typeFilter;
     return statusMatch && typeMatch;
   });
+
+  console.log('🔍 Propriedades filtradas:', filteredProperties.length);
 
   const getStatusBadge = (status: PropertyWithImages["status"]) => {
     const variants = {
@@ -74,6 +81,14 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
           <Plus className="h-4 w-4 mr-2" />
           Adicionar Imóvel
         </Button>
+      </div>
+
+      {/* Debug info - remover depois */}
+      <div className="p-4 bg-gray-700 rounded-lg text-sm text-gray-300">
+        <strong>🔧 Debug Info:</strong><br/>
+        Total de propriedades: {properties.length}<br/>
+        Propriedades filtradas: {filteredProperties.length}<br/>
+        Status do loading: {loading ? 'Carregando...' : 'Concluído'}
       </div>
 
       <div className="flex items-center gap-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
@@ -184,14 +199,17 @@ export function PropertyList({ properties, loading, onAddNew }: PropertyListProp
         <div className="text-center py-12">
           <Building2 className="h-12 w-12 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-300 mb-2">
-            Nenhuma propriedade encontrada
+            {properties.length === 0 ? 'Nenhuma propriedade cadastrada' : 'Nenhuma propriedade encontrada'}
           </h3>
           <p className="text-gray-500 mb-4">
-            Não há propriedades que correspondam aos filtros selecionados.
+            {properties.length === 0 
+              ? 'Comece adicionando sua primeira propriedade ao sistema.'
+              : 'Não há propriedades que correspondam aos filtros selecionados.'
+            }
           </p>
           <Button onClick={onAddNew} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
-            Adicionar Primeira Propriedade
+            {properties.length === 0 ? 'Adicionar Primeira Propriedade' : 'Adicionar Propriedade'}
           </Button>
         </div>
       )}
