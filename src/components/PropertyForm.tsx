@@ -48,11 +48,11 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
         .from('properties')
         .select('id')
         .eq('id', code.trim())
-        .single();
+        .maybeSingle();
 
       console.log('📊 Resultado da verificação:', { data, error });
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('❌ Erro ao verificar código:', error);
         return false;
       }
@@ -108,7 +108,6 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
 
       console.log('🔗 URL pública:', publicUrl);
 
-      // Insert image record in database
       const { error: insertError } = await supabase
         .from('property_images')
         .insert({
@@ -135,11 +134,46 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
     console.log('🚀 Iniciando submissão do formulário');
     console.log('📝 Dados do formulário:', formData);
 
-    if (!formData.propertyCode || !formData.title || !formData.type || !formData.price || !formData.area || !formData.address || !formData.city || !formData.state) {
+    // Validação de campos obrigatórios
+    if (!formData.propertyCode?.trim()) {
+      console.log('❌ Código da propriedade não preenchido');
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, preencha o código da propriedade.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.title?.trim() || !formData.type || !formData.price || !formData.area || !formData.address?.trim() || !formData.city?.trim() || !formData.state?.trim()) {
       console.log('❌ Campos obrigatórios não preenchidos');
       toast({
         title: "Erro no formulário",
         description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Verificar se o preço e área são números válidos
+    const priceNum = parseFloat(formData.price);
+    const areaNum = parseFloat(formData.area);
+    
+    if (isNaN(priceNum) || priceNum <= 0) {
+      console.log('❌ Preço inválido');
+      toast({
+        title: "Preço inválido",
+        description: "Por favor, insira um preço válido maior que zero.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isNaN(areaNum) || areaNum <= 0) {
+      console.log('❌ Área inválida');
+      toast({
+        title: "Área inválida",
+        description: "Por favor, insira uma área válida maior que zero.",
         variant: "destructive",
       });
       return;
@@ -162,23 +196,28 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
 
     try {
       console.log('💾 Inserindo propriedade no banco...');
-      // Insert property data com ID customizado
+      
+      // Preparar dados para inserção
+      const propertyData = {
+        id: formData.propertyCode.trim(),
+        title: formData.title.trim(),
+        type: formData.type,
+        price: priceNum,
+        area: areaNum,
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        status: formData.status,
+        description: formData.description?.trim() || null,
+      };
+
+      console.log('📋 Dados preparados para inserção:', propertyData);
+
       const { data: property, error: propertyError } = await supabase
         .from('properties')
-        .insert({
-          id: formData.propertyCode.trim(),
-          title: formData.title,
-          type: formData.type,
-          price: parseFloat(formData.price),
-          area: parseFloat(formData.area),
-          bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
-          bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          status: formData.status,
-          description: formData.description || null,
-        })
+        .insert(propertyData)
         .select()
         .single();
 
@@ -186,7 +225,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
 
       if (propertyError) {
         console.error('❌ Erro ao inserir propriedade:', propertyError);
-        throw propertyError;
+        throw new Error(`Erro na inserção: ${propertyError.message}`);
       }
 
       console.log('✅ Propriedade inserida com sucesso:', property);
@@ -207,9 +246,10 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
       onSubmit();
     } catch (error) {
       console.error('💥 Erro geral:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       toast({
         title: "Erro",
-        description: `Erro ao adicionar propriedade: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        description: `Erro ao adicionar propriedade: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
