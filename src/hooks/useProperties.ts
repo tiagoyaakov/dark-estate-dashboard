@@ -24,7 +24,7 @@ export function useProperties() {
         .from('properties')
         .select(`
           *,
-          property_images (*)
+          property_images!property_images_property_id_fkey (*)
         `)
         .order('created_at', { ascending: false });
 
@@ -52,8 +52,13 @@ export function useProperties() {
     // Configurar real-time updates para a tabela properties
     console.log('🔄 Configurando real-time updates para propriedades...');
     
+    // Criar canais com nomes únicos usando timestamp
+    const timestamp = Date.now();
+    const propertiesChannelName = `properties-changes-${timestamp}`;
+    const imagesChannelName = `property-images-changes-${timestamp}`;
+    
     const propertiesChannel = supabase
-      .channel('properties-changes')
+      .channel(propertiesChannelName)
       .on(
         'postgres_changes',
         {
@@ -66,7 +71,6 @@ export function useProperties() {
           
           if (payload.eventType === 'INSERT') {
             console.log('➕ Nova propriedade adicionada:', payload.new);
-            // Recarregar todas as propriedades para obter as imagens também
             fetchProperties();
           } else if (payload.eventType === 'UPDATE') {
             console.log('✏️ Propriedade atualizada:', payload.new);
@@ -81,7 +85,7 @@ export function useProperties() {
 
     // Configurar real-time updates para a tabela property_images
     const imagesChannel = supabase
-      .channel('property-images-changes')
+      .channel(imagesChannelName)
       .on(
         'postgres_changes',
         {
@@ -91,7 +95,6 @@ export function useProperties() {
         },
         (payload) => {
           console.log('🔔 Mudança detectada na tabela property_images:', payload);
-          // Recarregar propriedades quando imagens são adicionadas/atualizadas/removidas
           fetchProperties();
         }
       )
