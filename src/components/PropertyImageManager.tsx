@@ -3,6 +3,8 @@ import { Label } from "@/components/ui/label";
 import { Upload, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DatabasePropertyImage } from "@/hooks/useProperties";
+import { convertMultipleToWebP } from "@/utils/imageUtils";
+import { useToast } from "@/hooks/use-toast";
 
 interface PropertyImageManagerProps {
   existingImages: DatabasePropertyImage[];
@@ -23,25 +25,71 @@ export function PropertyImageManager({
   newImagePreviews,
   imagesToDelete
 }: PropertyImageManagerProps) {
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const { toast } = useToast();
+  const [converting, setConverting] = useState(false);
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      const newFiles = Array.from(files);
-      const updatedFiles = [...newImageFiles, ...newFiles];
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files);
+    
+    // Verificar tamanho dos arquivos (max 5MB cada)
+    const oversizedFiles = newFiles.filter(file => file.size > 5 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      toast({
+        title: "Arquivos muito grandes",
+        description: `${oversizedFiles.length} arquivo(s) excedem o limite de 5MB e foram ignorados.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setConverting(true);
+    
+    try {
+      console.log('🔄 Convertendo imagens para WebP...', newFiles.length, 'arquivos');
       
+      // Converter todas as imagens para WebP
+      const convertedFiles = await convertMultipleToWebP(newFiles, 0.85, 1200, 800);
+      
+      console.log('✅ Conversão concluída!', convertedFiles.length, 'arquivos convertidos');
+      
+      const updatedFiles = [...newImageFiles, ...convertedFiles];
+      
+      // Gerar previews das imagens convertidas
       const newPreviews: string[] = [];
-      newFiles.forEach(file => {
+      let processedCount = 0;
+      
+      convertedFiles.forEach(file => {
         const reader = new FileReader();
         reader.onload = (event) => {
           if (event.target?.result) {
             newPreviews.push(event.target.result as string);
-            if (newPreviews.length === newFiles.length) {
+            processedCount += 1;
+            
+            if (processedCount === convertedFiles.length) {
               onNewImagesChange(updatedFiles, [...newImagePreviews, ...newPreviews]);
+              
+              toast({
+                title: "Imagens processadas",
+                description: `${convertedFiles.length} imagem(ns) convertida(s) para WebP com sucesso!`,
+              });
             }
           }
         };
         reader.readAsDataURL(file);
       });
+      
+    } catch (error) {
+      console.error('❌ Erro na conversão:', error);
+      toast({
+        title: "Erro na conversão",
+        description: "Falha ao converter imagens. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setConverting(false);
     }
   };
 
@@ -93,13 +141,17 @@ export function PropertyImageManager({
       {/* New Images Upload */}
       <div className="space-y-4">
         <div className="flex items-center justify-center w-full">
-          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-900 hover:bg-gray-800 transition-colors">
+          <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg transition-colors ${converting ? 'cursor-not-allowed bg-gray-800 opacity-50' : 'cursor-pointer bg-gray-900 hover:bg-gray-800'}`}>
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <Upload className="w-8 h-8 mb-2 text-gray-400" />
+              <Upload className={`w-8 h-8 mb-2 text-gray-400 ${converting ? 'animate-spin' : ''}`} />
               <p className="mb-2 text-sm text-gray-400">
-                <span className="font-semibold">Clique para adicionar mais imagens</span>
+                <span className="font-semibold">
+                  {converting ? 'Convertendo para WebP...' : 'Clique para adicionar imagens'}
+                </span>
               </p>
-              <p className="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 5MB cada)</p>
+              <p className="text-xs text-gray-500">
+                {converting ? 'Aguarde o processamento...' : 'PNG, JPG, JPEG (MAX. 5MB cada) - Convertido automaticamente para WebP'}
+              </p>
             </div>
             <input
               type="file"
@@ -107,6 +159,7 @@ export function PropertyImageManager({
               multiple
               accept="image/*"
               onChange={handleImageChange}
+              disabled={converting}
             />
           </label>
         </div>

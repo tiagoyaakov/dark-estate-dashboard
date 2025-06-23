@@ -3,16 +3,95 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, TrendingUp, DollarSign, Eye, Globe, Users, MapPin } from "lucide-react";
 import { PropertyWithImages } from "@/hooks/useProperties";
 import { useClients } from "@/hooks/useClients";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { UpcomingAppointments } from "@/components/UpcomingAppointments";
+import { LayoutPreview } from "@/components/LayoutPreview";
 
 interface DashboardContentProps {
   properties: PropertyWithImages[];
   loading: boolean;
+  onNavigateToAgenda?: () => void;
 }
 
-export function DashboardContent({ properties, loading }: DashboardContentProps) {
+export function DashboardContent({ properties, loading, onNavigateToAgenda }: DashboardContentProps) {
   const { clients, loading: clientsLoading } = useClients();
+  const [previousMonthData, setPreviousMonthData] = useState({
+    properties: 0,
+    available: 0,
+    averagePrice: 0,
+    clients: 0,
+  });
+  const [loadingPreviousData, setLoadingPreviousData] = useState(true);
 
-  if (loading || clientsLoading) {
+  // Função para calcular dados do mês anterior
+  const fetchPreviousMonthData = async () => {
+    try {
+      const now = new Date();
+      const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+      console.log('📊 Buscando dados do mês anterior...');
+      console.log('📅 Período:', firstDayLastMonth.toISOString(), 'até', lastDayLastMonth.toISOString());
+
+      // Buscar propriedades do mês anterior
+      const { data: prevProperties, error: propertiesError } = await supabase
+        .from('properties')
+        .select('*')
+        .gte('created_at', firstDayLastMonth.toISOString())
+        .lt('created_at', firstDayThisMonth.toISOString());
+
+      if (propertiesError) {
+        console.error('❌ Erro ao buscar propriedades do mês anterior:', propertiesError);
+      }
+
+      // Buscar clientes do mês anterior
+      const { data: prevClients, error: clientsError } = await supabase
+        .from('leads')
+        .select('*')
+        .gte('created_at', firstDayLastMonth.toISOString())
+        .lt('created_at', firstDayThisMonth.toISOString());
+
+      if (clientsError) {
+        console.error('❌ Erro ao buscar clientes do mês anterior:', clientsError);
+      }
+
+      const prevPropertiesData = prevProperties || [];
+      const prevClientsData = prevClients || [];
+
+      const prevAvailable = prevPropertiesData.filter(p => p.status === "available").length;
+      const prevTotalValue = prevPropertiesData.reduce((sum, prop) => sum + prop.price, 0);
+      const prevAveragePrice = prevPropertiesData.length > 0 ? prevTotalValue / prevPropertiesData.length : 0;
+
+      setPreviousMonthData({
+        properties: prevPropertiesData.length,
+        available: prevAvailable,
+        averagePrice: prevAveragePrice,
+        clients: prevClientsData.length,
+      });
+
+      console.log('✅ Dados do mês anterior carregados:', {
+        properties: prevPropertiesData.length,
+        available: prevAvailable,
+        averagePrice: prevAveragePrice,
+        clients: prevClientsData.length,
+      });
+
+    } catch (error) {
+      console.error('💥 Erro ao buscar dados do mês anterior:', error);
+    } finally {
+      setLoadingPreviousData(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!loading && !clientsLoading) {
+      fetchPreviousMonthData();
+    }
+  }, [loading, clientsLoading]);
+
+  if (loading || clientsLoading || loadingPreviousData) {
     return (
       <div className="space-y-6">
         <div className="text-center py-12">
@@ -38,34 +117,58 @@ export function DashboardContent({ properties, loading }: DashboardContentProps)
 
   const totalClients = clients.length;
 
+  // Função para calcular percentual de mudança
+  const calculatePercentageChange = (current: number, previous: number): { change: string, type: "positive" | "negative" | "neutral" } => {
+    if (previous === 0) {
+      if (current > 0) return { change: "+100%", type: "positive" };
+      return { change: "0%", type: "neutral" };
+    }
+    
+    const percentChange = ((current - previous) / previous) * 100;
+    const formattedChange = Math.abs(percentChange).toFixed(1);
+    
+    if (percentChange > 0) {
+      return { change: `+${formattedChange}%`, type: "positive" };
+    } else if (percentChange < 0) {
+      return { change: `-${formattedChange}%`, type: "negative" };
+    }
+    return { change: "0%", type: "neutral" };
+  };
+
+  // Calcular mudanças percentuais
+  const propertiesChange = calculatePercentageChange(totalProperties, previousMonthData.properties);
+  const availableChange = calculatePercentageChange(availableProperties, previousMonthData.available);
+  const averagePriceChange = calculatePercentageChange(averagePrice, previousMonthData.averagePrice);
+  const clientsChange = calculatePercentageChange(totalClients, previousMonthData.clients);
+
   const stats = [
     {
       title: "Total de Imóveis",
       value: totalProperties.toString(),
       icon: Building2,
-      change: "+2.5%",
-      changeType: "positive" as const,
+      change: propertiesChange.change,
+      changeType: propertiesChange.type,
     },
     {
       title: "Disponíveis",
       value: availableProperties.toString(),
       icon: Eye,
-      change: "+1.2%", 
-      changeType: "positive" as const,
+      change: availableChange.change, 
+      changeType: availableChange.type,
     },
     {
       title: "Valor Médio",
       value: `R$ ${(averagePrice / 1000).toFixed(0)}k`,
       icon: DollarSign,
-      change: "+5.4%",
-      changeType: "positive" as const,
+      change: averagePriceChange.change,
+      changeType: averagePriceChange.type,
     },
     {
       title: "Total de Leads",
       value: totalClients.toString(),
       icon: Users,
-      change: "+8.1%",
-      changeType: "positive" as const,
+      change: clientsChange.change,
+      changeType: clientsChange.type,
     },
   ];
 
@@ -87,7 +190,10 @@ export function DashboardContent({ properties, loading }: DashboardContentProps)
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <p className="text-xs text-green-400 mt-1">
+              <p className={`text-xs mt-1 ${
+                stat.changeType === "positive" ? "text-green-400" : 
+                stat.changeType === "negative" ? "text-red-400" : "text-gray-400"
+              }`}>
                 {stat.change} em relação ao mês anterior
               </p>
             </CardContent>
@@ -178,27 +284,32 @@ export function DashboardContent({ properties, loading }: DashboardContentProps)
         </Card>
       </div>
 
-      <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-white">Distribuição por Tipo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { type: "house", label: "Casas", count: properties.filter(p => p.type === "house").length, icon: "🏠" },
-              { type: "apartment", label: "Apartamentos", count: properties.filter(p => p.type === "apartment").length, icon: "🏢" },
-              { type: "commercial", label: "Comercial", count: properties.filter(p => p.type === "commercial").length, icon: "🏪" },
-              { type: "land", label: "Terrenos", count: properties.filter(p => p.type === "land").length, icon: "🏞️" },
-            ].map((item) => (
-              <div key={item.type} className="p-4 rounded-lg bg-gray-700/30 text-center">
-                <div className="text-2xl mb-2">{item.icon}</div>
-                <div className="text-lg font-semibold text-white">{item.count}</div>
-                <div className="text-sm text-gray-400">{item.label}</div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Widget de Próximos Compromissos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <UpcomingAppointments onViewAll={onNavigateToAgenda} />
+        
+        <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-white">Distribuição por Tipo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { type: "house", label: "Casas", count: properties.filter(p => p.type === "house").length, icon: "🏠" },
+                { type: "apartment", label: "Apartamentos", count: properties.filter(p => p.type === "apartment").length, icon: "🏢" },
+                { type: "commercial", label: "Comercial", count: properties.filter(p => p.type === "commercial").length, icon: "🏪" },
+                { type: "land", label: "Terrenos", count: properties.filter(p => p.type === "land").length, icon: "🏞️" },
+              ].map((item) => (
+                <div key={item.type} className="p-4 rounded-lg bg-gray-700/30 text-center">
+                  <div className="text-2xl mb-2">{item.icon}</div>
+                  <div className="text-lg font-semibold text-white">{item.count}</div>
+                  <div className="text-sm text-gray-400">{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

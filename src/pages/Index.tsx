@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -9,10 +8,14 @@ import { PropertyList } from "@/components/PropertyList";
 import { ReportsView } from "@/components/ReportsView";
 import { PortalsView } from "@/components/PortalsView";
 import { ClientsView } from "@/components/ClientsView";
+import { AgendaView } from "@/components/AgendaView";
+import { ConnectionsView } from "@/components/ConnectionsView";
+import { ContractsView } from "@/components/ContractsView";
+
 import { useProperties } from "@/hooks/useProperties";
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<"dashboard" | "properties" | "add-property" | "reports" | "portals" | "clients">("dashboard");
+  const [currentView, setCurrentView] = useState<"dashboard" | "properties" | "add-property" | "contracts" | "agenda" | "reports" | "portals" | "clients" | "connections">("dashboard");
   const { properties, loading, refetch } = useProperties();
 
   const handlePropertySubmit = () => {
@@ -23,17 +26,27 @@ const Index = () => {
   const renderContent = () => {
     switch (currentView) {
       case "dashboard":
-        return <DashboardContent properties={properties} loading={loading} />;
+        return <DashboardContent 
+          properties={properties} 
+          loading={loading} 
+          onNavigateToAgenda={() => setCurrentView("agenda")}
+        />;
       case "properties":
-        return <PropertyList properties={properties} loading={loading} onAddNew={() => setCurrentView("add-property")} />;
+        return <PropertyList properties={properties} loading={loading} onAddNew={() => setCurrentView("add-property")} refetch={refetch} />;
       case "add-property":
         return <PropertyForm onSubmit={handlePropertySubmit} onCancel={() => setCurrentView("properties")} />;
+      case "contracts":
+        return <ContractsView />;
+      case "agenda":
+        return <AgendaView />;
       case "reports":
         return <ReportsView />;
       case "portals":
         return <PortalsView />;
       case "clients":
         return <ClientsView />;
+      case "connections":
+        return <ConnectionsView />;
       default:
         return <DashboardContent properties={properties} loading={loading} />;
     }

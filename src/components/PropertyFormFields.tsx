@@ -34,13 +34,13 @@ export function PropertyFormFields({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
-        <Label htmlFor="propertyCode" className="text-gray-300">Código do Imóvel *</Label>
+        <Label htmlFor="propertyCode" className="text-gray-300">Código de Referência *</Label>
         <Input
           id="propertyCode"
           value={formData.propertyCode}
           onChange={(e) => onChange("propertyCode", e.target.value)}
           onBlur={onCodeBlur}
-          placeholder="Ex: CASA001, APT123"
+          placeholder="Ex: 123456, CASA001, APT123"
           className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-400"
           required
           readOnly={readOnlyCode}
@@ -49,6 +49,7 @@ export function PropertyFormFields({
         {checkingCode && (
           <p className="text-sm text-gray-400">Verificando código...</p>
         )}
+        <p className="text-xs text-gray-500">Este código será incluído no título da propriedade para facilitar a identificação</p>
       </div>
 
       <div className="space-y-2">

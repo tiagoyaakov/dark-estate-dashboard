@@ -9,6 +9,15 @@ import { Tables } from "@/integrations/supabase/types";
 import { PropertyFormFields } from "./PropertyFormFields";
 import { PropertyImageManager } from "./PropertyImageManager";
 
+// Função para gerar UUID v4
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 type PropertyType = Tables<'properties'>['type'];
 type PropertyStatus = Tables<'properties'>['status'];
 
@@ -41,23 +50,24 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   const checkPropertyCodeExists = async (code: string) => {
     if (!code.trim()) return false;
     
-    console.log('🔍 Verificando se código existe (TEXT):', code.trim());
+    console.log('🔍 Verificando se código de referência existe:', code.trim());
     setCheckingCode(true);
     try {
-      const { data, error, count } = await supabase
+      // Buscar propriedades que tenham o código no título
+      const { data, error } = await supabase
         .from('properties')
-        .select('*', { count: 'exact', head: true })
-        .eq('id', code.trim());
+        .select('id, title')
+        .like('title', `[${code.trim()}]%`);
 
-      console.log('📊 Resultado da verificação (count):', { count, error });
+      console.log('📊 Resultado da verificação:', { data, error });
 
       if (error) {
         console.error('❌ Erro ao verificar código:', error);
         return false;
       }
 
-      const exists = (count || 0) > 0;
-      console.log('✅ Código existe?', exists);
+      const exists = (data && data.length > 0);
+      console.log('✅ Código já existe?', exists);
       return exists;
     } catch (error) {
       console.error('💥 Erro na verificação:', error);
@@ -75,7 +85,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
     if (exists) {
       toast({
         title: "Código já existe",
-        description: "Este código de imóvel já está sendo usado. Por favor, escolha outro.",
+        description: "Este código de referência já está sendo usado. Por favor, escolha outro.",
         variant: "destructive",
       });
       setFormData(prev => ({ ...prev, propertyCode: "" }));
@@ -83,18 +93,44 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
   };
 
   const uploadImages = async (propertyId: string) => {
-    console.log('📤 Iniciando upload de imagens para propriedade:', propertyId);
+    console.log('📤 Iniciando upload de imagens WebP para propriedade:', propertyId);
     console.log('📸 Quantidade de imagens:', imageFiles.length);
 
+    // Verificar se o bucket existe, senão criar
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    
+    if (bucketsError) {
+      console.error('❌ Erro ao listar buckets:', bucketsError);
+    } else {
+      const propertyImagesBucket = buckets.find(bucket => bucket.name === 'property-images');
+      if (!propertyImagesBucket) {
+        console.log('🪣 Criando bucket property-images...');
+        const { error: createBucketError } = await supabase.storage.createBucket('property-images', {
+          public: true,
+          allowedMimeTypes: ['image/webp', 'image/jpeg', 'image/png', 'image/jpg'],
+          fileSizeLimit: 5242880 // 5MB
+        });
+        
+        if (createBucketError) {
+          console.error('❌ Erro ao criar bucket:', createBucketError);
+        } else {
+          console.log('✅ Bucket criado com sucesso');
+        }
+      }
+    }
+
     const uploadPromises = imageFiles.map(async (file, index) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${propertyId}/${Date.now()}_${index}.${fileExt}`;
+      // Como as imagens já foram convertidas para WebP, usar sempre .webp
+      const fileName = `${propertyId}/${Date.now()}_${index}.webp`;
       
-      console.log('⬆️ Fazendo upload:', fileName);
+      console.log('⬆️ Fazendo upload WebP:', fileName, 'Tamanho:', (file.size / 1024).toFixed(2), 'KB');
 
       const { error: uploadError } = await supabase.storage
         .from('property-images')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          contentType: 'image/webp',
+          upsert: false
+        });
 
       if (uploadError) {
         console.error('❌ Erro no upload:', uploadError);
@@ -105,7 +141,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
         .from('property-images')
         .getPublicUrl(fileName);
 
-      console.log('🔗 URL pública:', publicUrl);
+      console.log('🔗 URL pública WebP:', publicUrl);
 
       const { error: insertError } = await supabase
         .from('property_images')
@@ -120,7 +156,7 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
         throw insertError;
       }
       
-      console.log('✅ Imagem salva com sucesso');
+      console.log('✅ Imagem WebP salva com sucesso');
       return publicUrl;
     });
 
@@ -178,14 +214,14 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
       return;
     }
 
-    // Verificar novamente se o código já existe
-    console.log('🔍 Verificação final do código...');
+    // Verificar se o código de referência já existe
+    console.log('🔍 Verificação final do código de referência...');
     const codeExists = await checkPropertyCodeExists(formData.propertyCode);
     if (codeExists) {
-      console.log('❌ Código já existe na verificação final');
+      console.log('❌ Código de referência já existe na verificação final');
       toast({
         title: "Código já existe",
-        description: "Este código de imóvel já está sendo usado. Por favor, escolha outro.",
+        description: "Este código de referência já está sendo usado. Por favor, escolha outro.",
         variant: "destructive",
       });
       return;
@@ -196,10 +232,16 @@ export function PropertyForm({ onSubmit, onCancel }: PropertyFormProps) {
     try {
       console.log('💾 Inserindo propriedade no banco...');
       
+      // Gerar UUID para o ID e usar o código no título
+      const propertyId = generateUUID();
+      const propertyTitle = formData.propertyCode.trim() ? 
+        `[${formData.propertyCode.trim()}] ${formData.title.trim()}` : 
+        formData.title.trim();
+      
       // Preparar dados para inserção
       const propertyData = {
-        id: formData.propertyCode.trim(),
-        title: formData.title.trim(),
+        id: propertyId,
+        title: propertyTitle,
         type: formData.type,
         price: priceNum,
         area: areaNum,

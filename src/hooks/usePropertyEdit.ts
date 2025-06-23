@@ -80,14 +80,17 @@ export function usePropertyEdit(property: PropertyWithImages) {
     if (imageFiles.length === 0) return [];
 
     const uploadPromises = imageFiles.map(async (file, index) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${propertyId}/${Date.now()}_${index}.${fileExt}`;
+      // Como as imagens já foram convertidas para WebP, usar sempre .webp
+      const fileName = `${propertyId}/${Date.now()}_${index}.webp`;
 
-      console.log('📤 Fazendo upload da imagem:', fileName);
+      console.log('📤 Fazendo upload da imagem WebP:', fileName, 'Tamanho:', (file.size / 1024).toFixed(2), 'KB');
 
       const { error: uploadError } = await supabase.storage
         .from('property-images')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          contentType: 'image/webp',
+          upsert: false
+        });
 
       if (uploadError) {
         console.error('❌ Erro no upload:', uploadError);
@@ -98,7 +101,7 @@ export function usePropertyEdit(property: PropertyWithImages) {
         .from('property-images')
         .getPublicUrl(fileName);
 
-      console.log('🔗 URL pública gerada:', publicUrl);
+      console.log('🔗 URL pública WebP gerada:', publicUrl);
 
       const { error: insertError } = await supabase
         .from('property_images')
@@ -223,6 +226,7 @@ export function usePropertyEdit(property: PropertyWithImages) {
             state: formData.state,
             status: formData.status,
             description: formData.description || null,
+            updated_at: new Date().toISOString(),
           })
           .eq('id', property.id);
 
@@ -245,7 +249,10 @@ export function usePropertyEdit(property: PropertyWithImages) {
         description: "Propriedade atualizada com sucesso.",
       });
 
-      onSuccess();
+      // Aguardar um pequeno delay para garantir que o real-time update seja processado
+      setTimeout(() => {
+        onSuccess();
+      }, 500);
     } catch (error) {
       console.error('💥 Erro ao atualizar propriedade:', error);
       toast({

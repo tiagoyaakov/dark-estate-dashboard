@@ -68,12 +68,14 @@ export function useProperties() {
         },
         (payload) => {
           console.log('🔔 Mudança detectada na tabela properties:', payload);
+          console.log('📄 Payload completo:', JSON.stringify(payload, null, 2));
           
           if (payload.eventType === 'INSERT') {
             console.log('➕ Nova propriedade adicionada:', payload.new);
             fetchProperties();
           } else if (payload.eventType === 'UPDATE') {
             console.log('✏️ Propriedade atualizada:', payload.new);
+            console.log('🔄 Forçando refetch devido a UPDATE...');
             fetchProperties();
           } else if (payload.eventType === 'DELETE') {
             console.log('🗑️ Propriedade removida:', payload.old);
