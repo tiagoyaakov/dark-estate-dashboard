@@ -15,7 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  RefreshCw
+  RefreshCw,
+  Printer
 } from 'lucide-react';
 import { ContractTemplate } from '@/types/contract-templates';
 
@@ -27,13 +28,15 @@ interface PDFViewerProps {
   onClose: () => void;
   template: ContractTemplate | null;
   fileUrl: string | null;
+  contract: any;
 }
 
 export const PDFViewer: React.FC<PDFViewerProps> = ({
   isOpen,
   onClose,
   template,
-  fileUrl
+  fileUrl,
+  contract
 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,14 +143,194 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
   };
 
   const handleDownload = () => {
-    if (fileUrl && template) {
-      const link = document.createElement('a');
-      link.href = fileUrl;
-      link.download = template.file_name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    // Criar documento HTML para download
+    const pdfContent = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Contrato_${contract.numero}</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 20px;
+            background: white;
+            color: #333;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+          }
+          .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 2em;
+          }
+          .header h2 {
+            color: #666;
+            margin: 10px 0 0 0;
+            font-size: 1.5em;
+          }
+          .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+          }
+          .section h3 {
+            color: #007bff;
+            margin: 0 0 15px 0;
+            font-size: 1.3em;
+          }
+          .info { 
+            margin-bottom: 12px; 
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+          }
+          .label { 
+            font-weight: bold; 
+            color: #555;
+          }
+          .value {
+            color: #333;
+            text-align: right;
+          }
+          .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+          }
+          .status.ativo { background: #d4edda; color: #155724; }
+          .status.pendente { background: #fff3cd; color: #856404; }
+          .status.vencendo { background: #f8d7da; color: #721c24; }
+          .financial {
+            background: #007bff;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+          }
+          .financial .value {
+            font-size: 2em;
+            font-weight: bold;
+          }
+          .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>CONTRATO ${contract.tipo?.toUpperCase() || 'INDEFINIDO'}</h1>
+          <h2>Número: ${contract.numero}</h2>
+        </div>
+        
+        <div class="section">
+          <h3>Informações do Cliente</h3>
+          <div class="info">
+            <span class="label">Nome:</span>
+            <span class="value">${contract.client_name || 'Não informado'}</span>
+          </div>
+          <div class="info">
+            <span class="label">Status:</span>
+            <span class="value">
+              <span class="status ${contract.status?.toLowerCase() || 'pendente'}">${contract.status || 'Pendente'}</span>
+            </span>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h3>Informações da Propriedade</h3>
+          <div class="info">
+            <span class="label">Título:</span>
+            <span class="value">${contract.property_title || 'Não informado'}</span>
+          </div>
+          <div class="info">
+            <span class="label">Endereço:</span>
+            <span class="value">${contract.property_address || 'Não informado'}</span>
+          </div>
+        </div>
+        
+        <div class="financial">
+          <h3>Valor do Contrato</h3>
+          <div class="value">R$ ${typeof contract.valor === 'string' ? parseFloat(contract.valor || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : (contract.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+        </div>
+        
+        <div class="section">
+          <h3>Datas Importantes</h3>
+          <div class="info">
+            <span class="label">Data de Início:</span>
+            <span class="value">${contract.data_inicio ? new Date(contract.data_inicio).toLocaleDateString('pt-BR') : 'Não informado'}</span>
+          </div>
+          <div class="info">
+            <span class="label">Data de Fim:</span>
+            <span class="value">${contract.data_fim ? new Date(contract.data_fim).toLocaleDateString('pt-BR') : 'Indefinido'}</span>
+          </div>
+          ${contract.data_assinatura ? `
+          <div class="info">
+            <span class="label">Data de Assinatura:</span>
+            <span class="value">${new Date(contract.data_assinatura).toLocaleDateString('pt-BR')}</span>
+          </div>
+          ` : ''}
+          ${contract.proximo_vencimento ? `
+          <div class="info">
+            <span class="label">Próximo Vencimento:</span>
+            <span class="value">${new Date(contract.proximo_vencimento).toLocaleDateString('pt-BR')}</span>
+          </div>
+          ` : ''}
+        </div>
+        
+        <div class="section">
+          <h3>Detalhes do Contrato</h3>
+          <div class="info">
+            <span class="label">Tipo:</span>
+            <span class="value">${contract.tipo || 'Não informado'}</span>
+          </div>
+          <div class="info">
+            <span class="label">Data de Criação:</span>
+            <span class="value">${contract.created_at ? new Date(contract.created_at).toLocaleDateString('pt-BR') + ' às ' + new Date(contract.created_at).toLocaleTimeString('pt-BR') : 'Não informado'}</span>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p><strong>Dashboard Imobiliário - Contratos</strong></p>
+          <p>Documento gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+          <p>Este é um documento oficial do sistema de contratos.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Fazer download
+    const blob = new Blob([pdfContent], { type: 'text/html; charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Contrato_${contract.numero}_${new Date().toISOString().split('T')[0]}.html`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const handleClose = () => {
@@ -293,6 +476,15 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
                   </Button>
                 </>
               )}
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePrint}
+                className="text-gray-300 hover:text-white hover:bg-gray-700"
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
               
               <Button
                 variant="ghost"

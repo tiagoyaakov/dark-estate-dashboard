@@ -18,7 +18,7 @@ interface ContractTemplatesContextType {
   error: string | null;
   uploading: boolean;
   uploadProgress: FileUploadProgress | null;
-  createTemplate: (name: string, description: string | null, file: File) => Promise<{ success: boolean; error?: string; template?: ContractTemplate }>;
+  createTemplate: (name: string, description: string | null, templateType: 'Locação' | 'Venda', file: File) => Promise<{ success: boolean; error?: string; template?: ContractTemplate }>;
   updateTemplate: (id: string, updates: ContractTemplateUpdate) => Promise<{ success: boolean; error?: string }>;
   deleteTemplate: (id: string) => Promise<void>;
   getFileUrl: (filePath: string) => Promise<string>;
@@ -157,6 +157,7 @@ export const ContractTemplatesProvider: React.FC<ContractTemplatesProviderProps>
   const createTemplate = async (
     name: string,
     description: string | null,
+    templateType: 'Locação' | 'Venda',
     file: File
   ): Promise<{ success: boolean; error?: string; template?: ContractTemplate }> => {
     try {
@@ -170,6 +171,7 @@ export const ContractTemplatesProvider: React.FC<ContractTemplatesProviderProps>
       const templateData: ContractTemplateInsert = {
         name,
         description,
+        template_type: templateType,
         file_name: file.name,
         file_path: uploadResult.filePath!,
         file_size: file.size,

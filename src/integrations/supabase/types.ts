@@ -18,6 +18,7 @@ export type Database = {
           file_path: string
           file_size: number | null
           file_type: string | null
+          template_type: "Locação" | "Venda"
           created_by: string | null
           created_at: string
           updated_at: string
@@ -31,6 +32,7 @@ export type Database = {
           file_path: string
           file_size?: number | null
           file_type?: string | null
+          template_type?: "Locação" | "Venda"
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -44,6 +46,7 @@ export type Database = {
           file_path?: string
           file_size?: number | null
           file_type?: string | null
+          template_type?: "Locação" | "Venda"
           created_by?: string | null
           created_at?: string
           updated_at?: string

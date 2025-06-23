@@ -13,7 +13,9 @@ import {
   User,
   FileCheck,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Home,
+  Building2
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useContractTemplates } from '@/contexts/ContractTemplatesContext';
@@ -201,16 +203,36 @@ ON CONFLICT (id) DO NOTHING;
                           <FileText className="h-6 w-6 text-blue-400" />
                         </motion.div>
                         <h3 className="text-lg font-semibold text-white">{template.name}</h3>
+                        
+                        {/* Badge do Tipo de Contrato */}
                         <Badge 
                           variant="outline" 
-                          className="bg-blue-500/20 text-blue-300 border-blue-400/50"
+                          className={`${
+                            template.template_type === 'Venda' 
+                              ? 'bg-green-500/20 text-green-300 border-green-400/50'
+                              : 'bg-blue-500/20 text-blue-300 border-blue-400/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1">
+                            {template.template_type === 'Venda' ? (
+                              <Building2 className="h-3 w-3" />
+                            ) : (
+                              <Home className="h-3 w-3" />
+                            )}
+                            <span>{template.template_type || 'Locação'}</span>
+                          </div>
+                        </Badge>
+                        
+                        <Badge 
+                          variant="outline" 
+                          className="bg-gray-500/20 text-gray-300 border-gray-400/50"
                         >
                           {FILE_TYPE_LABELS[template.file_type || ''] || 'Documento'}
                         </Badge>
                         {isWordDocument(template.file_name, template.file_type) && (
                           <Badge 
                             variant="outline" 
-                            className="bg-green-500/20 text-green-300 border-green-400/50"
+                            className="bg-purple-500/20 text-purple-300 border-purple-400/50"
                           >
                             Conversão PDF
                           </Badge>

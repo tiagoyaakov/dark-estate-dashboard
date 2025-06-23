@@ -54,4 +54,11 @@ SELECT
 FROM pg_policies 
 WHERE schemaname = 'storage' 
 AND tablename = 'objects'
-AND policyname LIKE '%contract%'; 
+AND policyname LIKE '%contract%';
+
+-- Adicionar campo template_type na tabela contract_templates
+ALTER TABLE contract_templates 
+ADD COLUMN template_type varchar(20) CHECK (template_type IN ('Locação', 'Venda')) DEFAULT 'Locação';
+
+-- Comentário para documentar o campo
+COMMENT ON COLUMN contract_templates.template_type IS 'Tipo do template de contrato: Locação ou Venda'; 

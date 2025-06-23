@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileText, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, FileText, X, AlertCircle, CheckCircle, Building2, Home } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useContractTemplates } from '@/contexts/ContractTemplatesContext';
 import { ALLOWED_FILE_TYPES, FILE_TYPE_LABELS, MAX_FILE_SIZE } from '@/types/contract-templates';
@@ -21,6 +22,7 @@ export const ContractTemplateUpload: React.FC<ContractTemplateUploadProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [templateType, setTemplateType] = useState<'Locação' | 'Venda'>('Locação');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +92,7 @@ export const ContractTemplateUpload: React.FC<ContractTemplateUploadProps> = ({
     const result = await createTemplate(
       name.trim(),
       description.trim() || null,
+      templateType,
       selectedFile
     );
 
@@ -106,6 +109,7 @@ export const ContractTemplateUpload: React.FC<ContractTemplateUploadProps> = ({
   const handleClose = () => {
     setName('');
     setDescription('');
+    setTemplateType('Locação');
     setSelectedFile(null);
     setError(null);
     setSuccess(false);
@@ -152,6 +156,34 @@ export const ContractTemplateUpload: React.FC<ContractTemplateUploadProps> = ({
               rows={3}
               disabled={uploading}
             />
+          </div>
+
+          {/* Campo Tipo de Contrato */}
+          <div className="space-y-2">
+            <Label htmlFor="template-type">Tipo de Contrato *</Label>
+            <Select 
+              value={templateType} 
+              onValueChange={(value: 'Locação' | 'Venda') => setTemplateType(value)}
+              disabled={uploading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo de contrato" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Locação">
+                  <div className="flex items-center gap-2">
+                    <Home className="h-4 w-4 text-blue-500" />
+                    <span>Locação</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="Venda">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-green-500" />
+                    <span>Venda</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Área de Upload */}

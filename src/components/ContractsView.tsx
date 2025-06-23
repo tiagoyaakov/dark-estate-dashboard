@@ -37,6 +37,7 @@ import { ContractTemplateUpload } from "@/components/ContractTemplateUpload";
 import { ContractTemplatesList } from "@/components/ContractTemplatesList";
 import { NewContractModal } from './NewContractModal';
 import MissingDataModal from './MissingDataModal';
+import { PdfViewerModal } from './PdfViewerModal';
 import { useContracts } from '@/hooks/useContracts';
 import { toast } from 'sonner';
 
@@ -322,6 +323,8 @@ export function ContractsView() {
   // Estados para funcionalidades dos botões
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showPdfViewerModal, setShowPdfViewerModal] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<any>(null);
 
   // Gerar partículas
   useEffect(() => {
@@ -545,127 +548,20 @@ export function ContractsView() {
     setContractProcessingData(null);
   };
 
-  // Função para visualizar contrato (abre em nova aba)
+  // Função para visualizar contrato
   const handleViewContract = async (contract: any) => {
     try {
       console.log('👁️ Visualizando contrato:', contract.numero);
       
-      if (!contract.contract_file_path) {
-        toast.error('Arquivo do contrato não encontrado');
+      if (!contract.numero) {
+        toast.error('Dados do contrato incompletos');
         return;
       }
 
-      // Por enquanto, vamos mostrar as informações do contrato em uma nova aba
-      const contractInfo = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Visualizar Contrato ${contract.numero}</title>
-          <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              margin: 40px; 
-              background: #f5f5f5;
-            }
-            .container {
-              background: white;
-              padding: 40px;
-              border-radius: 8px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              max-width: 800px;
-              margin: 0 auto;
-            }
-            .header { 
-              text-align: center; 
-              margin-bottom: 30px; 
-              border-bottom: 2px solid #333;
-              padding-bottom: 20px;
-            }
-            .info { 
-              margin-bottom: 20px; 
-              display: flex;
-              padding: 10px 0;
-              border-bottom: 1px solid #eee;
-            }
-            .label { 
-              font-weight: bold; 
-              min-width: 150px;
-              color: #333;
-            }
-            .value {
-              color: #666;
-            }
-            .status {
-              display: inline-block;
-              padding: 4px 12px;
-              border-radius: 20px;
-              font-size: 12px;
-              font-weight: bold;
-              text-transform: uppercase;
-            }
-            .status.ativo { background: #d4edda; color: #155724; }
-            .status.pendente { background: #fff3cd; color: #856404; }
-            .status.vencendo { background: #f8d7da; color: #721c24; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>CONTRATO ${contract.tipo.toUpperCase()}</h1>
-              <h2>Nº ${contract.numero}</h2>
-            </div>
-            
-            <div class="info">
-              <span class="label">Cliente:</span>
-              <span class="value">${contract.client_name}</span>
-            </div>
-            
-            <div class="info">
-              <span class="label">Propriedade:</span>
-              <span class="value">${contract.property_title}</span>
-            </div>
-            
-            <div class="info">
-              <span class="label">Endereço:</span>
-              <span class="value">${contract.property_address}</span>
-            </div>
-            
-            <div class="info">
-              <span class="label">Valor:</span>
-              <span class="value">R$ ${typeof contract.valor === 'string' ? parseFloat(contract.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : contract.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-            </div>
-            
-            <div class="info">
-              <span class="label">Data de Início:</span>
-              <span class="value">${new Date(contract.data_inicio).toLocaleDateString('pt-BR')}</span>
-            </div>
-            
-            <div class="info">
-              <span class="label">Data de Fim:</span>
-              <span class="value">${contract.data_fim ? new Date(contract.data_fim).toLocaleDateString('pt-BR') : 'Indefinido'}</span>
-            </div>
-            
-            <div class="info">
-              <span class="label">Status:</span>
-              <span class="value">
-                <span class="status ${contract.status.toLowerCase()}">${contract.status}</span>
-              </span>
-            </div>
-            
-            <div style="margin-top: 50px; text-align: center; color: #666; font-size: 14px;">
-              <p>Visualização gerada em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-
-      // Abrir em nova aba
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(contractInfo);
-        newWindow.document.close();
-      }
+      // Abrir modal de visualização
+      setSelectedContract(contract);
+      setShowPdfViewerModal(true);
+      toast.success('Contrato carregado para visualização');
       
     } catch (error) {
       console.error('❌ Erro ao visualizar contrato:', error);
@@ -681,54 +577,191 @@ export function ContractsView() {
     try {
       console.log('⬇️ Baixando contrato:', contract.numero);
       
-      if (!contract.contract_file_path) {
-        toast.error('Arquivo do contrato não encontrado');
+      if (!contract.numero) {
+        toast.error('Dados do contrato incompletos');
         return;
       }
 
-      // Simular download - aqui você implementaria a lógica real do Supabase Storage
-      // Por enquanto, vamos criar um HTML simples para demonstração
+      // Criar um documento HTML mais completo para download
       const pdfContent = `
         <!DOCTYPE html>
-        <html>
+        <html lang="pt-BR">
         <head>
-          <title>Contrato ${contract.numero}</title>
+          <meta charset="UTF-8">
+          <title>Contrato_${contract.numero}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .info { margin-bottom: 20px; }
-            .label { font-weight: bold; }
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0;
+              padding: 20px;
+              background: white;
+              color: #333;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 30px; 
+              border-bottom: 3px solid #007bff;
+              padding-bottom: 20px;
+            }
+            .header h1 {
+              color: #007bff;
+              margin: 0;
+              font-size: 2em;
+            }
+            .header h2 {
+              color: #666;
+              margin: 10px 0 0 0;
+              font-size: 1.5em;
+            }
+            .section {
+              margin-bottom: 25px;
+              padding: 20px;
+              border: 1px solid #ddd;
+              border-radius: 8px;
+              background: #f9f9f9;
+            }
+            .section h3 {
+              color: #007bff;
+              margin: 0 0 15px 0;
+              font-size: 1.3em;
+            }
+            .info { 
+              margin-bottom: 12px; 
+              display: flex;
+              justify-content: space-between;
+              padding: 8px 0;
+              border-bottom: 1px solid #eee;
+            }
+            .label { 
+              font-weight: bold; 
+              color: #555;
+            }
+            .value {
+              color: #333;
+              text-align: right;
+            }
+            .status {
+              display: inline-block;
+              padding: 4px 12px;
+              border-radius: 15px;
+              font-size: 12px;
+              font-weight: bold;
+              text-transform: uppercase;
+            }
+            .status.ativo { background: #d4edda; color: #155724; }
+            .status.pendente { background: #fff3cd; color: #856404; }
+            .status.vencendo { background: #f8d7da; color: #721c24; }
+            .financial {
+              background: #007bff;
+              color: white;
+              text-align: center;
+              padding: 20px;
+              border-radius: 8px;
+              margin: 20px 0;
+            }
+            .financial .value {
+              font-size: 2em;
+              font-weight: bold;
+            }
+            .footer {
+              margin-top: 40px;
+              text-align: center;
+              font-size: 12px;
+              color: #666;
+              border-top: 1px solid #ddd;
+              padding-top: 20px;
+            }
           </style>
         </head>
         <body>
           <div class="header">
-            <h1>CONTRATO ${contract.tipo.toUpperCase()}</h1>
-            <h2>Nº ${contract.numero}</h2>
+            <h1>CONTRATO ${contract.tipo?.toUpperCase() || 'INDEFINIDO'}</h1>
+            <h2>Número: ${contract.numero}</h2>
           </div>
           
-          <div class="info">
-            <p><span class="label">Cliente:</span> ${contract.client_name}</p>
-            <p><span class="label">Propriedade:</span> ${contract.property_title}</p>
-            <p><span class="label">Endereço:</span> ${contract.property_address}</p>
-            <p><span class="label">Valor:</span> R$ ${typeof contract.valor === 'string' ? parseFloat(contract.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : contract.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-            <p><span class="label">Data de Início:</span> ${new Date(contract.data_inicio).toLocaleDateString('pt-BR')}</p>
-            <p><span class="label">Data de Fim:</span> ${contract.data_fim ? new Date(contract.data_fim).toLocaleDateString('pt-BR') : 'Indefinido'}</p>
-            <p><span class="label">Status:</span> ${contract.status}</p>
+          <div class="section">
+            <h3>Informações do Cliente</h3>
+            <div class="info">
+              <span class="label">Nome:</span>
+              <span class="value">${contract.client_name || 'Não informado'}</span>
+            </div>
+            <div class="info">
+              <span class="label">Status:</span>
+              <span class="value">
+                <span class="status ${contract.status?.toLowerCase() || 'pendente'}">${contract.status || 'Pendente'}</span>
+              </span>
+            </div>
           </div>
           
-          <div style="margin-top: 50px;">
-            <p>Contrato gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
+          <div class="section">
+            <h3>Informações da Propriedade</h3>
+            <div class="info">
+              <span class="label">Título:</span>
+              <span class="value">${contract.property_title || 'Não informado'}</span>
+            </div>
+            <div class="info">
+              <span class="label">Endereço:</span>
+              <span class="value">${contract.property_address || 'Não informado'}</span>
+            </div>
+          </div>
+          
+          <div class="financial">
+            <h3>Valor do Contrato</h3>
+            <div class="value">R$ ${typeof contract.valor === 'string' ? parseFloat(contract.valor || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : (contract.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+          </div>
+          
+          <div class="section">
+            <h3>Datas Importantes</h3>
+            <div class="info">
+              <span class="label">Data de Início:</span>
+              <span class="value">${contract.data_inicio ? new Date(contract.data_inicio).toLocaleDateString('pt-BR') : 'Não informado'}</span>
+            </div>
+            <div class="info">
+              <span class="label">Data de Fim:</span>
+              <span class="value">${contract.data_fim ? new Date(contract.data_fim).toLocaleDateString('pt-BR') : 'Indefinido'}</span>
+            </div>
+            ${contract.data_assinatura ? `
+            <div class="info">
+              <span class="label">Data de Assinatura:</span>
+              <span class="value">${new Date(contract.data_assinatura).toLocaleDateString('pt-BR')}</span>
+            </div>
+            ` : ''}
+            ${contract.proximo_vencimento ? `
+            <div class="info">
+              <span class="label">Próximo Vencimento:</span>
+              <span class="value">${new Date(contract.proximo_vencimento).toLocaleDateString('pt-BR')}</span>
+            </div>
+            ` : ''}
+          </div>
+          
+          <div class="section">
+            <h3>Detalhes do Contrato</h3>
+            <div class="info">
+              <span class="label">Tipo:</span>
+              <span class="value">${contract.tipo || 'Não informado'}</span>
+            </div>
+            <div class="info">
+              <span class="label">Data de Criação:</span>
+              <span class="value">${contract.created_at ? new Date(contract.created_at).toLocaleDateString('pt-BR') + ' às ' + new Date(contract.created_at).toLocaleTimeString('pt-BR') : 'Não informado'}</span>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p><strong>Dashboard Imobiliário - Contratos</strong></p>
+            <p>Documento gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+            <p>Este é um documento oficial do sistema de contratos.</p>
           </div>
         </body>
         </html>
       `;
 
       // Converter HTML para Blob e fazer download
-      const blob = new Blob([pdfContent], { type: 'text/html' });
+      const blob = new Blob([pdfContent], { type: 'text/html; charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `contrato_${contract.numero}.html`;
+      link.download = `Contrato_${contract.numero}_${new Date().toISOString().split('T')[0]}.html`;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -749,10 +782,14 @@ export function ContractsView() {
     if (deletingId === contract.id) return;
 
     const confirmed = window.confirm(
-      `Tem certeza que deseja excluir o contrato "${contract.numero}"?\n\n` +
-      `Cliente: ${contract.client_name}\n` +
-      `Propriedade: ${contract.property_title}\n\n` +
-      `Esta ação não pode ser desfeita.`
+      `⚠️ CONFIRMAÇÃO DE EXCLUSÃO ⚠️\n\n` +
+      `Tem certeza que deseja excluir o contrato?\n\n` +
+      `📋 Número: ${contract.numero}\n` +
+      `👤 Cliente: ${contract.client_name || 'Não informado'}\n` +
+      `🏠 Propriedade: ${contract.property_title || 'Não informado'}\n` +
+      `💰 Valor: R$ ${typeof contract.valor === 'string' ? parseFloat(contract.valor || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : (contract.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\n` +
+      `⚠️ ATENÇÃO: Esta ação não pode ser desfeita!\n\n` +
+      `Clique em "OK" para confirmar a exclusão ou "Cancelar" para manter o contrato.`
     );
 
     if (!confirmed) return;
@@ -760,18 +797,19 @@ export function ContractsView() {
     setDeletingId(contract.id);
     try {
       console.log('🗑️ Deletando contrato:', contract.numero);
+      toast.loading('Excluindo contrato...', { id: 'delete-contract' });
       
       const success = await deleteContract(contract.id);
       
       if (success) {
-        toast.success('Contrato excluído com sucesso!');
+        toast.success('✅ Contrato excluído com sucesso!', { id: 'delete-contract' });
       } else {
-        toast.error('Erro ao excluir contrato');
+        toast.error('❌ Erro ao excluir contrato', { id: 'delete-contract' });
       }
       
     } catch (error) {
       console.error('❌ Erro ao deletar contrato:', error);
-      toast.error('Erro ao excluir contrato');
+      toast.error('❌ Erro inesperado ao excluir contrato', { id: 'delete-contract' });
     } finally {
       setDeletingId(null);
     }
@@ -1326,6 +1364,16 @@ export function ContractsView() {
       <ContractTemplateUpload
         open={showTemplateUploadModal}
         onOpenChange={setShowTemplateUploadModal}
+      />
+
+      {/* Modal Visualização de Contrato */}
+      <PdfViewerModal
+        isOpen={showPdfViewerModal}
+        onClose={() => {
+          setShowPdfViewerModal(false);
+          setSelectedContract(null);
+        }}
+        contract={selectedContract}
       />
     </div>
   );
