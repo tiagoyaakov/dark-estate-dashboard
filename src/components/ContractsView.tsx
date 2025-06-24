@@ -464,7 +464,7 @@ export function ContractsView() {
       const contractToSave = {
         numero: contractNumber,
         tipo: (property.property_type === 'Apartamento' || property.property_type === 'Casa' ? 'Locação' : 'Venda') as 'Locação' | 'Venda',
-        status: 'Ativo' as 'Ativo' | 'Pendente' | 'Vencendo' | 'Expirado' | 'Cancelado',
+        status: 'Pendente' as 'Ativo' | 'Pendente' | 'Vencendo' | 'Expirado' | 'Cancelado', // Novos contratos iniciam como pendente de assinatura
         client_id: client.id,
         client_name: client.name,
         client_email: client.email || '',
