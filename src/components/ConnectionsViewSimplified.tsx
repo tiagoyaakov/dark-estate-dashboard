@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
 import { Alert, AlertDescription } from "./ui/alert";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { 
   Smartphone, 
@@ -47,6 +46,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWhatsAppInstances, WhatsAppInstance } from '@/hooks/useWhatsAppInstances';
 import { Switch } from "./ui/switch";
 import { Textarea } from "./ui/textarea";
+import { supabase } from '@/integrations/supabase/client';
 
 export function ConnectionsViewSimplified() {
   const { profile, isManager } = useUserProfile();
@@ -150,30 +150,39 @@ export function ConnectionsViewSimplified() {
     let intervalId: NodeJS.Timeout | null = null;
 
     if (showQrModal && selectedInstance && !qrExpired) {
-      // Verificar status a cada 2 segundos
+      // Verificar status a cada 3 segundos (aumentado de 2)
       intervalId = setInterval(async () => {
-        await refreshInstances();
-        
-        // Procurar a instância selecionada na lista atualizada
-        const currentInstance = instances.find(inst => inst.id === selectedInstance.id);
-        
-        if (currentInstance && currentInstance.status === 'connected') {
-          console.log('✅ Instância conectada com sucesso:', currentInstance.instance_name);
+        try {
+          // Fazer uma verificação silenciosa sem atualizar todo o estado
+          const { data } = await supabase
+            .from('whatsapp_instances')
+            .select('*')
+            .eq('id', selectedInstance.id)
+            .single();
           
-          // Fechar modal QR e mostrar sucesso
-          setShowQrModal(false);
-          setQrCode(null);
-          setQrTimer(15);
-          setQrExpired(false);
-          setConnectedInstanceName(currentInstance.profile_name || currentInstance.instance_name);
-          setShowSuccessModal(true);
-          
-          // Fechar modal de sucesso após 3 segundos
-          setTimeout(() => {
-            setShowSuccessModal(false);
-          }, 3000);
+          if (data && data.status === 'connected') {
+            console.log('✅ Instância conectada com sucesso:', data.instance_name);
+            
+            // Fechar modal QR e mostrar sucesso
+            setShowQrModal(false);
+            setQrCode(null);
+            setQrTimer(15);
+            setQrExpired(false);
+            setConnectedInstanceName(data.profile_name || data.instance_name);
+            setShowSuccessModal(true);
+            
+            // Atualizar lista de instâncias após conexão
+            await refreshInstances();
+            
+            // Fechar modal de sucesso após 3 segundos
+            setTimeout(() => {
+              setShowSuccessModal(false);
+            }, 3000);
+          }
+        } catch (error) {
+          console.error('Erro ao verificar status da instância:', error);
         }
-      }, 2000);
+      }, 3000); // Aumentado para 3 segundos
     }
 
     return () => {
@@ -181,7 +190,7 @@ export function ConnectionsViewSimplified() {
         clearInterval(intervalId);
       }
     };
-  }, [showQrModal, selectedInstance, qrExpired, instances]);
+  }, [showQrModal, selectedInstance, qrExpired]);
 
   // Criar nova instância
   const handleCreateInstance = async () => {
@@ -347,328 +356,156 @@ export function ConnectionsViewSimplified() {
 
   // Componente para exibir instância
   const InstanceCard = ({ instance }: { instance: WhatsAppInstance }) => {
-    const statusConfig = {
-      connected: { 
-        color: 'bg-green-500', 
-        textColor: 'text-green-400',
-        bgColor: 'bg-green-500/10',
-        borderColor: 'border-green-500/30',
-        icon: CheckCircle,
-        text: 'Conectado',
-        description: 'Online e funcionando'
-      },
-      disconnected: { 
-        color: 'bg-red-500', 
-        textColor: 'text-red-400',
-        bgColor: 'bg-red-500/10',
-        borderColor: 'border-red-500/30',
-        icon: XCircle,
-        text: 'Desconectado',
-        description: 'Offline - clique para conectar'
-      },
-      connecting: { 
-        color: 'bg-yellow-500', 
-        textColor: 'text-yellow-400',
-        bgColor: 'bg-yellow-500/10',
-        borderColor: 'border-yellow-500/30',
-        icon: Clock,
-        text: 'Conectando',
-        description: 'Estabelecendo conexão...'
-      },
-      qr_code: { 
-        color: 'bg-blue-500', 
-        textColor: 'text-blue-400',
-        bgColor: 'bg-blue-500/10',
-        borderColor: 'border-blue-500/30',
-        icon: QrCode,
-        text: 'QR Code',
-        description: 'Escaneie o QR Code'
-      },
-      error: { 
-        color: 'bg-red-600', 
-        textColor: 'text-red-400',
-        bgColor: 'bg-red-600/10',
-        borderColor: 'border-red-600/30',
-        icon: AlertTriangle,
-        text: 'Erro',
-        description: 'Problema na conexão'
-      }
-    }[instance.status];
-
-    const StatusIcon = statusConfig.icon;
+    const isConnected = instance.status === 'connected';
 
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className="group"
-      >
-        <Card className={`bg-gray-800/60 backdrop-blur-sm border-gray-700 hover:border-gray-600 hover:bg-gray-800/80 transition-all duration-300 hover:shadow-xl hover:shadow-gray-900/50 ${statusConfig.borderColor}`}>
-          <CardHeader className="pb-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                {/* Avatar/Foto de Perfil */}
-                <div className="relative">
-                  {instance.profile_pic_url ? (
-                    <div className="relative">
-                      <img 
-                        src={instance.profile_pic_url} 
-                        alt={instance.profile_name || instance.instance_name}
-                        className="h-12 w-12 rounded-full object-cover border-2 border-gray-600"
-                        onError={(e) => {
-                          // Fallback para ícone se a imagem falhar
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                        }}
-                      />
-                      <div className="hidden h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                        <User className="h-6 w-6 text-white" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                      <User className="h-6 w-6 text-white" />
-                    </div>
-                  )}
-                  {/* Status Indicator */}
-                  <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full ${statusConfig.color} border-2 border-gray-800 flex items-center justify-center`}>
-                    {instance.status === 'connecting' && (
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        className="h-2 w-2 border border-white border-t-transparent rounded-full"
-                      />
-                    )}
+      <Card className="bg-gray-800 border-gray-700 p-6">
+        {/* Header com foto, nome e status */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            {/* Foto de perfil */}
+            <div className="relative">
+              {instance.profile_pic_url ? (
+                <>
+                  <img 
+                    src={instance.profile_pic_url} 
+                    alt={instance.profile_name || instance.instance_name}
+                    className="h-12 w-12 rounded-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                  <div className="hidden h-12 w-12 rounded-full bg-gray-600 flex items-center justify-center">
+                    <User className="h-6 w-6 text-gray-400" />
                   </div>
+                </>
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-gray-600 flex items-center justify-center">
+                  <User className="h-6 w-6 text-gray-400" />
                 </div>
-
-                <div className="flex-1 min-w-0">
-                  {/* Nome da Instância */}
-                  <CardTitle className="text-white text-xl font-bold truncate">
-                    {instance.instance_name}
-                  </CardTitle>
-                  
-                  {/* Nome do Perfil WhatsApp */}
-                  {instance.profile_name && (
-                    <p className="text-gray-300 text-sm font-medium truncate mt-1">
-                      {instance.profile_name}
-                    </p>
-                  )}
-
-                  {/* Status Badge */}
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ${statusConfig.textColor} ${statusConfig.bgColor} border-current`}
-                    >
-                      <StatusIcon className="h-3 w-3 mr-1" />
-                      {statusConfig.text}
-                    </Badge>
-                    
-                    {/* Badge do Usuário (apenas para gestores) */}
-                    {isManager && instance.user_profile && (
-                      <Badge variant="secondary" className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
-                        <Crown className="h-3 w-3 mr-1" />
-                        {instance.user_profile.full_name || 'Usuário'}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {/* Descrição do Status */}
-                  <p className="text-gray-400 text-xs mt-1">
-                    {statusConfig.description}
-                  </p>
-                </div>
-              </div>
-              
-              {/* Menu de ações rápidas no canto superior direito */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-gray-700/50"
-                  >
-                    <MoreVertical className="h-4 w-4 text-gray-400" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
-                  <DropdownMenuItem 
-                    onClick={() => handleGenerateQrCode(instance)}
-                    className="text-gray-300 hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:text-white"
-                  >
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Gerar QR Code
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => handleShowConfig(instance)}
-                    className="text-gray-300 hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:text-white"
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Configurações
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => handleDeleteInstance(instance.id)}
-                    className="text-red-400 hover:bg-red-500/20 hover:text-red-300 focus:bg-red-500/20 focus:text-red-300"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Deletar Instância
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              )}
+              {/* Status indicator */}
+              <div className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-500'} border-2 border-gray-800`} />
             </div>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="space-y-4">
-              {/* Informações de Contato */}
-              {instance.phone_number && (
-                <div className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700/50">
-                  <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <Phone className="h-4 w-4 text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">{instance.phone_number}</p>
-                    <p className="text-gray-400 text-xs">Número vinculado</p>
-                  </div>
-                </div>
-              )}
 
-              {/* Última Atividade */}
-              {instance.last_seen && (
-                <div className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700/50">
-                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <Activity className="h-4 w-4 text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">
-                      {new Date(instance.last_seen).toLocaleString('pt-BR')}
-                    </p>
-                    <p className="text-gray-400 text-xs">Última atividade</p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Estatísticas em Grid Melhorado */}
-              <div className="grid grid-cols-3 gap-3">
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-lg p-3 text-center group cursor-pointer"
-                >
-                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-500/30 transition-colors">
-                    <MessageCircle className="h-4 w-4 text-blue-400" />
-                  </div>
-                  <div className="text-white font-bold text-lg">
-                    {instance.message_count.toLocaleString('pt-BR')}
-                  </div>
-                  <div className="text-gray-400 text-xs">Mensagens</div>
-                  {instance.message_count > 1000 && (
-                    <Badge variant="outline" className="mt-1 text-xs text-blue-400 border-blue-500/30">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      Alto volume
-                    </Badge>
-                  )}
-                </motion.div>
-
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-lg p-3 text-center group cursor-pointer"
-                >
-                  <div className="h-8 w-8 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-2 group-hover:bg-purple-500/30 transition-colors">
-                    <Users className="h-4 w-4 text-purple-400" />
-                  </div>
-                  <div className="text-white font-bold text-lg">
-                    {instance.contact_count.toLocaleString('pt-BR')}
-                  </div>
-                  <div className="text-gray-400 text-xs">Contatos</div>
-                  {instance.contact_count > 500 && (
-                    <Badge variant="outline" className="mt-1 text-xs text-purple-400 border-purple-500/30">
-                      <Crown className="h-3 w-3 mr-1" />
-                      Rede ampla
-                    </Badge>
-                  )}
-                </motion.div>
-
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  className="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 rounded-lg p-3 text-center group cursor-pointer"
-                >
-                  <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-2 group-hover:bg-green-500/30 transition-colors">
-                    <Activity className="h-4 w-4 text-green-400" />
-                  </div>
-                  <div className="text-white font-bold text-lg">
-                    {instance.chat_count.toLocaleString('pt-BR')}
-                  </div>
-                  <div className="text-gray-400 text-xs">Chats</div>
-                  {instance.chat_count > 100 && (
-                    <Badge variant="outline" className="mt-1 text-xs text-green-400 border-green-500/30">
-                      <Zap className="h-3 w-3 mr-1" />
-                      Ativo
-                    </Badge>
-                  )}
-                </motion.div>
-              </div>
-
-              {/* Botões de Ação */}
-              <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleGenerateQrCode(instance)}
-                  disabled={generatingQr}
-                  className="flex-1 border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
-                >
-                  <QrCode className="h-4 w-4 mr-2" />
-                  {generatingQr ? 'Gerando...' : 'QR Code'}
-                </Button>
-
-                {instance.status === 'disconnected' ? (
-                  <Button
-                    size="sm"
-                    onClick={() => handleConnect(instance)}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <Wifi className="h-4 w-4 mr-2" />
-                    Conectar
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDisconnect(instance)}
-                    className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/20"
-                  >
-                    <WifiOff className="h-4 w-4 mr-2" />
-                    Desconectar
-                  </Button>
+            {/* Nome e status */}
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-white font-medium">
+                  {instance.profile_name || instance.instance_name}
+                </h3>
+                {isConnected && (
+                  <span className="text-green-500 text-sm flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    Online
+                  </span>
                 )}
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleShowConfig(instance)}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
               </div>
+              <p className="text-gray-400 text-sm">Instância: {instance.instance_name}</p>
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </div>
+
+          {/* Ações */}
+          <div className="flex gap-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => handleShowConfig(instance)}
+              className="h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-700"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => handleDeleteInstance(instance.id)}
+              className="h-8 w-8 text-gray-400 hover:text-red-400 hover:bg-red-900/20"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Informações */}
+        <div className="space-y-2 mb-4">
+          {instance.phone_number && (
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-300">{instance.phone_number}</span>
+            </div>
+          )}
+          <div className="text-sm text-gray-500">
+            Última atividade: {instance.last_seen ? new Date(instance.last_seen).toLocaleString('pt-BR') : 'Nunca'}
+          </div>
+        </div>
+
+        {/* Estatísticas */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="bg-blue-900/30 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-blue-400">
+              {instance.message_count.toLocaleString('pt-BR')}
+            </div>
+            <div className="text-xs text-gray-400">Mensagens</div>
+          </div>
+          <div className="bg-green-900/30 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-green-400">
+              {instance.contact_count.toLocaleString('pt-BR')}
+            </div>
+            <div className="text-xs text-gray-400">Contatos</div>
+          </div>
+          <div className="bg-purple-900/30 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-purple-400">
+              {instance.chat_count.toLocaleString('pt-BR')}
+            </div>
+            <div className="text-xs text-gray-400">Chats</div>
+          </div>
+        </div>
+
+        {/* Botões de ação principais */}
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleGenerateQrCode(instance)}
+            disabled={generatingQr || isConnected}
+            className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
+          >
+            <QrCode className="h-4 w-4 mr-2" />
+            {generatingQr ? 'Gerando...' : 'Gerar QR Code'}
+          </Button>
+
+          {isConnected ? (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => handleDisconnect(instance)}
+              className="flex-1"
+            >
+              <WifiOff className="h-4 w-4 mr-2" />
+              Desconectar
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => handleConnect(instance)}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              <Wifi className="h-4 w-4 mr-2" />
+              Conectar
+            </Button>
+          )}
+        </div>
+      </Card>
     );
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="inline-block"
-        >
+        <div className="inline-block">
           <Smartphone className="h-8 w-8 text-blue-400" />
-        </motion.div>
+        </div>
         <p className="ml-3 text-gray-400">Carregando conexões...</p>
       </div>
     );
@@ -677,12 +514,7 @@ export function ConnectionsViewSimplified() {
   return (
     <div className="space-y-6 p-6 min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
-      >
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">
             Conexões WhatsApp
@@ -696,12 +528,7 @@ export function ConnectionsViewSimplified() {
           </p>
         </div>
         
-        <motion.div 
-          className="flex gap-3"
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
-        >
+        <div className="flex gap-3">
           <Button 
             variant="outline"
             onClick={refreshInstances}
@@ -728,8 +555,8 @@ export function ConnectionsViewSimplified() {
               Apenas Gestores
             </Button>
           )}
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* Error Alert */}
       {error && (
@@ -760,22 +587,15 @@ export function ConnectionsViewSimplified() {
       )}
 
       {/* Stats Cards */}
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6, duration: 0.8 }}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { title: "Total Instâncias", value: stats.total_instances, icon: Smartphone, color: "text-blue-400" },
           { title: "Conectadas", value: stats.connected_instances, icon: Wifi, color: "text-green-400" },
           { title: "Chats Ativos", value: stats.total_chats, icon: MessageCircle, color: "text-purple-400" },
           { title: "Mensagens", value: stats.total_messages, icon: Activity, color: "text-orange-400" }
         ].map((stat, index) => (
-          <motion.div
+          <div
             key={stat.title}
-            whileHover={{ scale: 1.02, y: -5 }}
-            transition={{ duration: 0.2 }}
           >
             <Card className="bg-gray-800/50 backdrop-blur-sm border-gray-700/60 hover:bg-gray-800/70 transition-all duration-300">
               <CardContent className="p-6">
@@ -790,17 +610,12 @@ export function ConnectionsViewSimplified() {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         ))}
-      </motion.div>
+      </div>
 
       {/* Search */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.8 }}
-        className="flex flex-col sm:flex-row gap-4"
-      >
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -810,34 +625,22 @@ export function ConnectionsViewSimplified() {
             className="pl-10 bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500"
           />
         </div>
-      </motion.div>
+      </div>
 
       {/* Instances Grid */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1, duration: 0.8 }}
-        className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-      >
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredInstances.map((instance, index) => (
-          <motion.div
+          <div
             key={instance.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1, duration: 0.5 }}
           >
             <InstanceCard instance={instance} />
-          </motion.div>
+          </div>
         ))}
-      </motion.div>
+      </div>
 
       {/* Empty State */}
       {filteredInstances.length === 0 && !loading && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-        >
+        <div>
           <Card className="bg-gray-800/50 backdrop-blur-sm border-gray-700/60">
             <CardContent className="p-12 text-center">
               <Smartphone className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -870,7 +673,7 @@ export function ConnectionsViewSimplified() {
               )}
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       )}
 
       {/* Modal Adicionar Instância */}
@@ -986,165 +789,91 @@ export function ConnectionsViewSimplified() {
           setSelectedInstance(null);
         }
       }}>
-        <DialogContent className="bg-gray-900/95 backdrop-blur-xl border-gray-700/50 text-white max-w-md overflow-hidden">
-          <DialogHeader className="pb-4">
-            <DialogTitle className="text-white">QR Code - {selectedInstance?.instance_name}</DialogTitle>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white text-lg">
+              QR Code - {selectedInstance?.instance_name}
+            </DialogTitle>
             <DialogDescription className="text-gray-400">
               Escaneie o QR code com seu WhatsApp para conectar
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-6">
+          <div className="py-4 max-h-[70vh] overflow-y-auto">
             {qrExpired ? (
-              // Tela de erro por timeout
-              <div className="text-center py-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-red-600/30 to-red-700/30 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-red-500/50">
-                  <Clock className="h-12 w-12 text-red-400" />
+              <div className="text-center py-8">
+                <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <XCircle className="h-12 w-12 text-red-400" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">
-                  QR Code Expirado
-                </h3>
-                <p className="text-gray-300 mb-6">
-                  O tempo limite de 15 segundos foi atingido. Tente gerar um novo QR Code.
-                </p>
-                <div className="flex items-center gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowQrModal(false);
-                      setQrCode(null);
-                      setQrTimer(15);
-                      setQrExpired(false);
-                    }}
-                    className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={handleRetryQrCode}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Tentar Novamente
-                  </Button>
-                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">QR Code Expirado</h3>
+                <p className="text-gray-400 mb-6">O tempo limite foi excedido. Gere um novo QR Code.</p>
+                <Button 
+                  onClick={handleRetryQrCode}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Gerar Novo QR Code
+                </Button>
               </div>
             ) : qrCode ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
-                className="flex flex-col items-center space-y-6"
-              >
-                {/* QR Code com efeito visual */}
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl blur-xl animate-pulse"></div>
-                  <div className="relative bg-white p-6 rounded-xl shadow-2xl border border-gray-200">
-                    <img 
-                      src={qrCode} 
-                      alt="QR Code WhatsApp" 
-                      className="w-56 h-56 object-contain"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <div className="hidden text-center p-8 text-gray-500">
-                      <QrCode className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                      <p>QR Code não pôde ser carregado</p>
-                    </div>
-                  </div>
-                  
-                  {/* Logo WhatsApp no canto */}
-                  <div className="absolute -bottom-2 -right-2 bg-green-500 p-2 rounded-full shadow-lg">
-                    <MessageCircle className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-
+              <>
                 {/* Timer */}
-                <div className="flex items-center justify-center gap-2">
-                  <Clock className={`h-5 w-5 ${qrTimer <= 5 ? 'text-red-400' : 'text-blue-400'}`} />
-                  <span className={`text-lg font-bold ${qrTimer <= 5 ? 'text-red-400' : 'text-blue-400'}`}>
+                <div className="text-center mb-4">
+                  <div className={`text-2xl font-bold ${qrTimer <= 5 ? 'text-red-400' : 'text-blue-400'}`}>
                     {qrTimer}s
-                  </span>
-                  <div className="flex items-center gap-2 text-xs text-blue-400 ml-4">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                    <span>Aguardando conexão...</span>
                   </div>
-                </div>
-                
-                {/* Instruções passo a passo */}
-                <div className="w-full max-w-sm">
-                  <h4 className="text-lg font-semibold text-white mb-4 text-center flex items-center justify-center gap-2">
-                    <Smartphone className="h-5 w-5 text-green-400" />
-                    Como conectar
-                  </h4>
-                  
-                  <div className="space-y-3">
-                    {[
-                      { icon: Phone, text: "Abra o WhatsApp no seu celular", color: "text-blue-400" },
-                      { icon: Settings, text: "Toque em Menu ou Configurações", color: "text-purple-400" },
-                      { icon: Monitor, text: 'Toque em "Aparelhos conectados"', color: "text-yellow-400" },
-                      { icon: QrCode, text: "Escaneie este código QR", color: "text-green-400" }
-                    ].map((step, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.2 + 0.3 }}
-                        className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-gray-700/50"
-                      >
-                        <div className={`h-8 w-8 rounded-full bg-gray-700/50 flex items-center justify-center ${step.color}`}>
-                          <step.icon className="h-4 w-4" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-300 bg-gray-700/50 px-2 py-1 rounded text-center min-w-[20px]">
-                            {index + 1}
-                          </span>
-                          <p className="text-sm text-gray-300">{step.text}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                  <p className="text-gray-400 text-sm">Tempo restante</p>
                 </div>
 
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button
-                    onClick={() => handleGenerateQrCode(selectedInstance!)}
-                    disabled={generatingQr}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg"
-                  >
-                    <RefreshCw className={`mr-2 h-4 w-4 ${generatingQr ? 'animate-spin' : ''}`} />
-                    {generatingQr ? 'Gerando novo QR...' : 'Atualizar QR Code'}
-                  </Button>
-                </motion.div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center py-16"
-              >
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-xl animate-pulse"></div>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                    className="relative h-16 w-16 rounded-full border-4 border-gray-700 border-t-blue-500 mb-6"
+                {/* QR Code */}
+                <div className="bg-white p-4 rounded-lg mx-auto w-fit">
+                  <img 
+                    src={qrCode} 
+                    alt="QR Code" 
+                    className="max-w-[300px] max-h-[300px] w-full h-auto"
                   />
                 </div>
-                <div className="text-center">
-                  <p className="text-white font-medium mb-2">Gerando QR Code</p>
-                  <p className="text-gray-400 text-sm">Aguarde alguns segundos...</p>
+
+                {/* Instruções */}
+                <div className="mt-6 space-y-3">
+                  <h4 className="font-medium text-white">Como conectar:</h4>
+                  <ol className="space-y-2 text-sm text-gray-300">
+                    <li className="flex gap-2">
+                      <span className="text-blue-400">1.</span>
+                      Abra o WhatsApp no seu celular
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-blue-400">2.</span>
+                      Toque em Mais opções (⋮) {">"} Dispositivos conectados
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-blue-400">3.</span>
+                      Toque em Conectar dispositivo
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-blue-400">4.</span>
+                      Aponte seu telefone para esta tela para escanear o código
+                    </li>
+                  </ol>
                 </div>
-              </motion.div>
+
+                {/* Status de monitoramento */}
+                <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                  <div className="flex items-center gap-2 text-sm text-blue-400">
+                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-pulse" />
+                    Monitorando conexão...
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="h-2 w-2 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-gray-400">Gerando QR Code...</p>
+              </div>
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+          <DialogFooter className="mt-4">
             <Button
               variant="outline"
               onClick={() => {
@@ -1154,11 +883,11 @@ export function ConnectionsViewSimplified() {
                 setQrExpired(false);
                 setSelectedInstance(null);
               }}
-              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              className="border-gray-600 text-gray-300 hover:bg-gray-700"
             >
               Fechar
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1166,14 +895,9 @@ export function ConnectionsViewSimplified() {
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent className="bg-gray-900/95 border-gray-700/50 text-white max-w-sm">
           <div className="text-center py-6">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", bounce: 0.5 }}
-              className="w-20 h-20 bg-gradient-to-br from-green-600/30 to-green-700/30 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-green-500/50"
-            >
+            <div className="w-20 h-20 bg-gradient-to-br from-green-600/30 to-green-700/30 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-green-500/50">
               <Check className="h-12 w-12 text-green-400" />
-            </motion.div>
+            </div>
             <h3 className="text-xl font-bold text-white mb-2">
               Conectado com Sucesso!
             </h3>
@@ -1202,13 +926,9 @@ export function ConnectionsViewSimplified() {
 
           {loadingConfig ? (
             <div className="py-8 text-center">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="inline-block"
-              >
+              <div className="inline-block">
                 <Settings className="h-8 w-8 text-blue-400" />
-              </motion.div>
+              </div>
               <p className="mt-3 text-gray-400">Carregando configurações...</p>
             </div>
           ) : (
