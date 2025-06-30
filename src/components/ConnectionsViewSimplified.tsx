@@ -49,20 +49,22 @@ import { Textarea } from "./ui/textarea";
 
 export function ConnectionsViewSimplified() {
   const { profile, isManager } = useUserProfile();
-  const { 
-    instances, 
-    loading, 
-    error, 
-    createInstance, 
+  const {
+    instances,
+    loading,
+    error,
+    createInstance,
     updateInstanceStatus,
     deleteInstance,
     generateQrCode,
+    configureInstance,
+    editInstanceConfig,
     getInstanceStats,
     loadAllUsers,
     refreshInstances,
     canCreateInstances,
-    configureInstance,
-    editInstanceConfig
+    connectInstance,
+    disconnectInstance
   } = useWhatsAppInstances();
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -253,7 +255,7 @@ export function ConnectionsViewSimplified() {
   // Simular conexão (atualizar status)
   const handleConnect = async (instance: WhatsAppInstance) => {
     try {
-      await updateInstanceStatus(instance.id, 'connected');
+      await connectInstance(instance.id);
     } catch (error: any) {
       console.error('Erro ao conectar:', error);
       alert(`Erro: ${error.message}`);
@@ -263,7 +265,7 @@ export function ConnectionsViewSimplified() {
   // Simular desconexão
   const handleDisconnect = async (instance: WhatsAppInstance) => {
     try {
-      await updateInstanceStatus(instance.id, 'disconnected');
+      await disconnectInstance(instance.id);
     } catch (error: any) {
       console.error('Erro ao desconectar:', error);
       alert(`Erro: ${error.message}`);

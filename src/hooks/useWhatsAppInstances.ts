@@ -461,34 +461,149 @@ export function useWhatsAppInstances() {
       try {
         console.log('🗑️ Chamando endpoint: POST /webhook/deletar-instancia para', instanceToDelete.instance_name);
         
-        await fetch(`https://webhooklabz.n8nlabz.com.br/webhook/deletar-instancia`, {
+        const response = await fetch(`https://webhooklabz.n8nlabz.com.br/webhook/deletar-instancia`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
           mode: 'cors',
           body: JSON.stringify({
             instanceName: instanceToDelete.instance_name
           }),
         });
-        console.log(`🗑️ Instância ${instanceToDelete.instance_name} deletada do sistema externo`);
-      } catch (externalError) {
-        console.warn('Erro ao deletar do sistema externo (continuando com deleção local):', externalError);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.warn('❌ Erro HTTP ao deletar instância externa:', response.status, response.statusText);
+          console.warn('📝 Resposta do servidor:', errorText);
+          throw new Error(`Erro no sistema externo (${response.status})`);
+        }
+
+        const responseData = await response.json();
+        console.log(`🗑️ Resposta da deleção externa:`, responseData);
+        
+        if (!responseData.success) {
+          throw new Error(responseData.message || 'Falha ao deletar no sistema externo');
+        }
+
+        console.log(`✅ Instância ${instanceToDelete.instance_name} deletada do sistema externo com sucesso`);
+      } catch (externalError: any) {
+        console.error('❌ Erro ao deletar do sistema externo:', externalError.message);
+        throw new Error(`Falha ao deletar no sistema externo: ${externalError.message}`);
       }
 
-      // 3. Deletar do banco de dados local
+      // 3. Deletar do banco de dados local apenas se a deleção externa foi bem-sucedida
       const { error } = await supabase
         .from('whatsapp_instances')
         .delete()
         .eq('id', instanceId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro ao deletar do Supabase:', error);
+        throw new Error(`Erro ao deletar do banco local: ${error.message}`);
+      }
 
       // 4. Atualizar estado local
       setInstances(prev => prev.filter(instance => instance.id !== instanceId));
+      console.log(`✅ Instância ${instanceToDelete.instance_name} deletada completamente`);
 
     } catch (error: any) {
-      console.error('Erro ao deletar instância:', error);
+      console.error('❌ Erro completo ao deletar instância:', error);
+      throw error;
+    }
+  };
+
+  // Conectar instância via endpoint
+  const connectInstance = async (instanceId: string) => {
+    try {
+      const instance = instances.find(inst => inst.id === instanceId);
+      if (!instance) {
+        throw new Error('Instância não encontrada');
+      }
+
+      console.log('🔗 Chamando endpoint: POST /webhook/conectar-instancia para', instance.instance_name);
+
+      const response = await fetch('https://webhooklabz.n8nlabz.com.br/webhook/conectar-instancia', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        mode: 'cors',
+        body: JSON.stringify({
+          instanceName: instance.instance_name
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn('❌ Erro HTTP ao conectar instância:', response.status, response.statusText);
+        console.warn('📝 Resposta do servidor:', errorText);
+        throw new Error(`Erro ao conectar instância (${response.status})`);
+      }
+
+      const data = await response.json();
+      console.log(`🔗 Resposta da conexão:`, data);
+
+      if (data.success) {
+        // Atualizar status no Supabase
+        await updateInstanceStatus(instanceId, 'connected');
+        console.log(`✅ Instância ${instance.instance_name} conectada com sucesso`);
+        return data;
+      } else {
+        throw new Error(data.message || 'Falha ao conectar instância');
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao conectar instância:', error);
+      throw error;
+    }
+  };
+
+  // Desconectar instância via endpoint
+  const disconnectInstance = async (instanceId: string) => {
+    try {
+      const instance = instances.find(inst => inst.id === instanceId);
+      if (!instance) {
+        throw new Error('Instância não encontrada');
+      }
+
+      console.log('🔌 Chamando endpoint: POST /webhook/desconectar-instancia para', instance.instance_name);
+
+      const response = await fetch('https://webhooklabz.n8nlabz.com.br/webhook/desconectar-instancia', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        mode: 'cors',
+        body: JSON.stringify({
+          instanceName: instance.instance_name
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn('❌ Erro HTTP ao desconectar instância:', response.status, response.statusText);
+        console.warn('📝 Resposta do servidor:', errorText);
+        throw new Error(`Erro ao desconectar instância (${response.status})`);
+      }
+
+      const data = await response.json();
+      console.log(`🔌 Resposta da desconexão:`, data);
+
+      if (data.success) {
+        // Atualizar status no Supabase
+        await updateInstanceStatus(instanceId, 'disconnected');
+        console.log(`✅ Instância ${instance.instance_name} desconectada com sucesso`);
+        return data;
+      } else {
+        throw new Error(data.message || 'Falha ao desconectar instância');
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao desconectar instância:', error);
       throw error;
     }
   };
@@ -832,6 +947,8 @@ export function useWhatsAppInstances() {
     getInstanceStats,
     loadAllUsers,
     refreshInstances: loadInstances,
-    canCreateInstances: isManager // Helper para saber se pode criar instâncias
+    canCreateInstances: isManager, // Helper para saber se pode criar instâncias
+    connectInstance,
+    disconnectInstance
   };
 } 
