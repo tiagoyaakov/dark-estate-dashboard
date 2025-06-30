@@ -46,7 +46,6 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWhatsAppInstances, WhatsAppInstance } from '@/hooks/useWhatsAppInstances';
 import { Switch } from "./ui/switch";
 import { Textarea } from "./ui/textarea";
-import { supabase } from '@/integrations/supabase/client';
 
 export function ConnectionsViewSimplified() {
   const { profile, isManager } = useUserProfile();
@@ -150,39 +149,62 @@ export function ConnectionsViewSimplified() {
     let intervalId: NodeJS.Timeout | null = null;
 
     if (showQrModal && selectedInstance && !qrExpired) {
-      // Verificar status a cada 3 segundos (aumentado de 2)
+      // Verificar status a cada 3 segundos através do endpoint externo
       intervalId = setInterval(async () => {
         try {
-          // Fazer uma verificação silenciosa sem atualizar todo o estado
-          const { data } = await supabase
-            .from('whatsapp_instances')
-            .select('*')
-            .eq('id', selectedInstance.id)
-            .single();
+          console.log('🔍 Verificando status da instância:', selectedInstance.instance_name);
           
-          if (data && data.status === 'connected') {
-            console.log('✅ Instância conectada com sucesso:', data.instance_name);
+          // Chamar endpoint para verificar status da instância específica
+          const response = await fetch('https://webhooklabz.n8nlabz.com.br/webhook/whatsapp-instances', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            mode: 'cors',
+          });
+
+          if (!response.ok) {
+            console.warn('Erro ao verificar status:', response.status);
+            return;
+          }
+
+          const data = await response.json();
+          
+          if (data.success && data.data) {
+            // Procurar a instância específica na resposta
+            const updatedInstance = data.data.find((inst: any) => 
+              inst.name === selectedInstance.instance_name || 
+              inst.instanceName === selectedInstance.instance_name
+            );
             
-            // Fechar modal QR e mostrar sucesso
-            setShowQrModal(false);
-            setQrCode(null);
-            setQrTimer(15);
-            setQrExpired(false);
-            setConnectedInstanceName(data.profile_name || data.instance_name);
-            setShowSuccessModal(true);
-            
-            // Atualizar lista de instâncias após conexão
-            await refreshInstances();
-            
-            // Fechar modal de sucesso após 3 segundos
-            setTimeout(() => {
-              setShowSuccessModal(false);
-            }, 3000);
+            if (updatedInstance && updatedInstance.status === 'connected') {
+              console.log('✅ Instância conectada com sucesso via endpoint:', selectedInstance.instance_name);
+              
+              // Fechar modal QR e mostrar sucesso
+              setShowQrModal(false);
+              setQrCode(null);
+              setQrTimer(15);
+              setQrExpired(false);
+              setConnectedInstanceName(updatedInstance.profileName || selectedInstance.instance_name);
+              setShowSuccessModal(true);
+              
+              // Atualizar status no Supabase
+              await updateInstanceStatus(selectedInstance.id, 'connected');
+              
+              // Atualizar lista de instâncias
+              await refreshInstances();
+              
+              // Fechar modal de sucesso após 3 segundos
+              setTimeout(() => {
+                setShowSuccessModal(false);
+              }, 3000);
+            }
           }
         } catch (error) {
-          console.error('Erro ao verificar status da instância:', error);
+          console.error('Erro ao verificar status da instância via endpoint:', error);
         }
-      }, 3000); // Aumentado para 3 segundos
+      }, 3000);
     }
 
     return () => {
