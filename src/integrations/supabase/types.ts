@@ -254,6 +254,10 @@ export type Database = {
           estimated_value: number
           notes: string
           updated_at: string
+          cpf: string | null
+          endereco: string | null
+          estado_civil: string | null
+          imovel_interesse: string | null
         }
         Insert: {
           created_at?: string
@@ -269,6 +273,10 @@ export type Database = {
           estimated_value?: number
           notes?: string
           updated_at?: string
+          cpf?: string | null
+          endereco?: string | null
+          estado_civil?: string | null
+          imovel_interesse?: string | null
         }
         Update: {
           created_at?: string
@@ -284,6 +292,10 @@ export type Database = {
           estimated_value?: number
           notes?: string
           updated_at?: string
+          cpf?: string | null
+          endereco?: string | null
+          estado_civil?: string | null
+          imovel_interesse?: string | null
         }
         Relationships: [
           {
@@ -305,10 +317,18 @@ export type Database = {
           description: string
           id: string
           price: number
-          property_type: string
+          type: string
+          city: string
+          state: string
           status: string
           title: string
           updated_at: string
+          property_purpose: "Aluguel" | "Venda"
+          proprietario_nome: string | null
+          proprietario_estado_civil: string | null
+          proprietario_cpf: string | null
+          proprietario_endereco: string | null
+          proprietario_email: string | null
         }
         Insert: {
           address: string
@@ -319,10 +339,18 @@ export type Database = {
           description: string
           id?: string
           price: number
-          property_type: string
+          type: string
+          city: string
+          state: string
           status: string
           title: string
           updated_at?: string
+          property_purpose?: "Aluguel" | "Venda"
+          proprietario_nome?: string | null
+          proprietario_estado_civil?: string | null
+          proprietario_cpf?: string | null
+          proprietario_endereco?: string | null
+          proprietario_email?: string | null
         }
         Update: {
           address?: string
@@ -333,10 +361,18 @@ export type Database = {
           description?: string
           id?: string
           price?: number
-          property_type?: string
+          type?: string
+          city?: string
+          state?: string
           status?: string
           title?: string
           updated_at?: string
+          property_purpose?: "Aluguel" | "Venda"
+          proprietario_nome?: string | null
+          proprietario_estado_civil?: string | null
+          proprietario_cpf?: string | null
+          proprietario_endereco?: string | null
+          proprietario_email?: string | null
         }
         Relationships: []
       }
@@ -365,6 +401,216 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      whatsapp_instances: {
+        Row: {
+          id: string
+          user_id: string
+          instance_name: string
+          phone_number: string | null
+          profile_name: string | null
+          profile_pic_url: string | null
+          status: 'connected' | 'disconnected' | 'connecting' | 'qr_code' | 'error'
+          webhook_url: string | null
+          api_key: string | null
+          last_seen: string | null
+          message_count: number
+          contact_count: number
+          chat_count: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          instance_name: string
+          phone_number?: string | null
+          profile_name?: string | null
+          profile_pic_url?: string | null
+          status?: 'connected' | 'disconnected' | 'connecting' | 'qr_code' | 'error'
+          webhook_url?: string | null
+          api_key?: string | null
+          last_seen?: string | null
+          message_count?: number
+          contact_count?: number
+          chat_count?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          instance_name?: string
+          phone_number?: string | null
+          profile_name?: string | null
+          profile_pic_url?: string | null
+          status?: 'connected' | 'disconnected' | 'connecting' | 'qr_code' | 'error'
+          webhook_url?: string | null
+          api_key?: string | null
+          last_seen?: string | null
+          message_count?: number
+          contact_count?: number
+          chat_count?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_instances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      whatsapp_chats: {
+        Row: {
+          id: string
+          instance_id: string
+          user_id: string
+          contact_phone: string
+          contact_name: string | null
+          contact_avatar: string | null
+          last_message: string | null
+          last_message_time: string | null
+          unread_count: number
+          is_archived: boolean
+          tags: string[] | null
+          lead_id: string | null
+          property_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          instance_id: string
+          user_id: string
+          contact_phone: string
+          contact_name?: string | null
+          contact_avatar?: string | null
+          last_message?: string | null
+          last_message_time?: string | null
+          unread_count?: number
+          is_archived?: boolean
+          tags?: string[] | null
+          lead_id?: string | null
+          property_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          instance_id?: string
+          user_id?: string
+          contact_phone?: string
+          contact_name?: string | null
+          contact_avatar?: string | null
+          last_message?: string | null
+          last_message_time?: string | null
+          unread_count?: number
+          is_archived?: boolean
+          tags?: string[] | null
+          lead_id?: string | null
+          property_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_chats_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_chats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          id: string
+          chat_id: string
+          instance_id: string
+          user_id: string
+          message_id: string | null
+          from_me: boolean
+          contact_phone: string | null
+          message_type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'location' | 'contact'
+          content: string | null
+          media_url: string | null
+          caption: string | null
+          timestamp: string
+          read_at: string | null
+          delivered_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          chat_id: string
+          instance_id: string
+          user_id: string
+          message_id?: string | null
+          from_me?: boolean
+          contact_phone?: string | null
+          message_type?: 'text' | 'image' | 'video' | 'audio' | 'document' | 'location' | 'contact'
+          content?: string | null
+          media_url?: string | null
+          caption?: string | null
+          timestamp?: string
+          read_at?: string | null
+          delivered_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          chat_id?: string
+          instance_id?: string
+          user_id?: string
+          message_id?: string | null
+          from_me?: boolean
+          contact_phone?: string | null
+          message_type?: 'text' | 'image' | 'video' | 'audio' | 'document' | 'location' | 'contact'
+          content?: string | null
+          media_url?: string | null
+          caption?: string | null
+          timestamp?: string
+          read_at?: string | null
+          delivered_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           }
         ]

@@ -19,6 +19,13 @@ export function PropertyImageGallery({
 }: PropertyImageGalleryProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(initialImageIndex);
 
+  console.log('🖼️ PropertyImageGallery - Props:', { 
+    property: property?.title, 
+    open, 
+    initialImageIndex,
+    imagesCount: property?.property_images?.length || 0
+  });
+
   // Reset image index when property changes or dialog opens
   useEffect(() => {
     if (open && property) {

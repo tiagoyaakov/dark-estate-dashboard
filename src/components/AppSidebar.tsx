@@ -1,4 +1,4 @@
-import { Building2, Home, Plus, BarChart3, Settings, Users, Globe, TrendingUp, FileText, Calendar, Wifi, ChevronDown, ChevronRight, LogOut } from "lucide-react";
+import { Building2, Home, BarChart3, Settings, Users, Globe, TrendingUp, FileText, Calendar, Wifi, ChevronDown, ChevronRight, LogOut, UserCheck, Database, ShieldCheck } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   Sidebar,
@@ -18,61 +18,86 @@ import {
 import { supabase } from '../integrations/supabase/client';
 import { Button } from "./ui/button";
 import { User } from '@supabase/supabase-js';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const menuItems = [
   {
-    title: "Dashboard",
+    title: "Painel",
     url: "#",
     icon: BarChart3,
     view: "dashboard" as const,
+    permissionKey: "menu_dashboard",
   },
   {
     title: "Propriedades",
     url: "#",
     icon: Building2,
     view: "properties" as const,
-  },
-  {
-    title: "Adicionar Imóvel",
-    url: "#",
-    icon: Plus,
-    view: "add-property" as const,
+    permissionKey: "menu_properties",
   },
   {
     title: "Contratos",
     url: "#",
     icon: FileText,
     view: "contracts" as const,
+    permissionKey: "menu_contracts",
   },
   {
     title: "Agenda",
     url: "#",
     icon: Calendar,
     view: "agenda" as const,
+    permissionKey: "menu_agenda",
   },
   {
-    title: "Clientes",
+    title: "Pipeline Clientes",
     url: "#",
-    icon: Users,
+    icon: UserCheck,
     view: "clients" as const,
+    permissionKey: "menu_clients",
+  },
+  {
+    title: "CRM Clientes",
+    url: "#",
+    icon: Database,
+    view: "clients-crm" as const,
+    permissionKey: "menu_clients_crm",
   },
   {
     title: "Relatórios",
     url: "#",
     icon: TrendingUp,
     view: "reports" as const,
+    permissionKey: "menu_reports",
   },
   {
     title: "Portais",
     url: "#",
     icon: Globe,
     view: "portals" as const,
+    permissionKey: "menu_portals",
   },
   {
     title: "Conexões",
     url: "#",
     icon: Wifi,
     view: "connections" as const,
+    permissionKey: "menu_connections",
+  },
+  {
+    title: "Usuários",
+    url: "#",
+    icon: Users,
+    view: "users" as const,
+    permissionKey: "menu_users",
+  },
+  {
+    title: "Configurar Permissões",
+    url: "#",
+    icon: ShieldCheck,
+    view: "permissions" as const,
+    permissionKey: "menu_permissions",
   },
 ];
 
@@ -93,12 +118,6 @@ const analyticsItems = [
 
 const secondaryItems = [
   {
-    title: "Clientes",
-    url: "#",
-    icon: Users,
-    view: "clients" as const,
-  },
-  {
     title: "Configurações",
     url: "#",
     icon: Settings,
@@ -107,12 +126,14 @@ const secondaryItems = [
 
 interface AppSidebarProps {
   currentView: string;
-  onViewChange: (view: "dashboard" | "properties" | "add-property" | "contracts" | "agenda" | "reports" | "portals" | "clients" | "connections") => void;
+  onViewChange: (view: "dashboard" | "properties" | "contracts" | "agenda" | "reports" | "portals" | "clients" | "clients-crm" | "connections" | "users" | "permissions") => void;
 }
 
 export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const { profile, isAdmin } = useUserProfile();
+  const { hasPermission } = usePermissions();
 
   useEffect(() => {
     // Buscar usuário atual
@@ -141,6 +162,13 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
   // Pegar primeira letra do email para o avatar
   const avatarLetter = user?.email?.charAt(0).toUpperCase() || 'U';
 
+  // Filtrar menus baseado nas permissões
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!item.permissionKey) return true; // Se não tem permissão definida, mostrar para todos
+    if (!profile) return false; // Se não tem perfil, não mostrar menus
+    return hasPermission(item.permissionKey);
+  });
+
   return (
     <Sidebar className="border-r border-gray-800 bg-gray-900 text-white">
       <SidebarHeader className="p-6 border-b border-gray-800 bg-gray-900">
@@ -164,7 +192,7 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {filteredMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild
@@ -234,29 +262,12 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild
-                    isActive={currentView === item.view}
-                    className={`
-                      text-gray-300 hover:text-white hover:bg-gray-800/70 transition-all duration-200
-                      ${currentView === item.view 
-                        ? 'bg-gradient-to-r from-blue-600/20 to-blue-700/20 text-white border-l-2 border-blue-500' 
-                        : ''
-                      }
-                    `}
+                    className="text-gray-300 hover:text-white hover:bg-gray-800/70 transition-all duration-200"
                   >
-                    {item.view ? (
-                      <button 
-                        onClick={() => onViewChange(item.view)}
-                        className="flex items-center gap-3 w-full px-3 py-2"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </button>
-                    ) : (
-                      <a href={item.url} className="flex items-center gap-3 px-3 py-2">
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </a>
-                    )}
+                    <a href={item.url} className="flex items-center gap-3 px-3 py-2">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

@@ -1,9 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Tables } from '@/integrations/supabase/types';
+import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
 export type DatabaseLead = Tables<'leads'>;
+export type LeadInsert = TablesInsert<'leads'>;
+export type LeadUpdate = TablesUpdate<'leads'>;
 
 export function useLeads() {
   const [leads, setLeads] = useState<DatabaseLead[]>([]);
@@ -27,9 +28,80 @@ export function useLeads() {
     }
   };
 
+  const createLead = async (leadData: Omit<LeadInsert, 'user_id'>): Promise<DatabaseLead | null> => {
+    try {
+      // Buscar usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const { data, error } = await supabase
+        .from('leads')
+        .insert([{ ...leadData, user_id: user.id }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Atualizar lista local
+      setLeads(prev => [data, ...prev]);
+      return data;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar lead');
+      return null;
+    }
+  };
+
+  const updateLead = async (id: string, updates: LeadUpdate): Promise<DatabaseLead | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Atualizar lista local
+      setLeads(prev => prev.map(lead => lead.id === id ? data : lead));
+      return data;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao atualizar lead');
+      return null;
+    }
+  };
+
+  const deleteLead = async (id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Atualizar lista local
+      setLeads(prev => prev.filter(lead => lead.id !== id));
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao deletar lead');
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchLeads();
   }, []);
 
-  return { leads, loading, error, refetch: fetchLeads };
+  return { 
+    leads, 
+    loading, 
+    error, 
+    refetch: fetchLeads,
+    createLead,
+    updateLead,
+    deleteLead
+  };
 }

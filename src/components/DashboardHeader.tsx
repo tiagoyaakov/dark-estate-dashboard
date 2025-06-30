@@ -1,4 +1,3 @@
-
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Bell, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ export function DashboardHeader() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
-              placeholder="Buscar propriedades..."
+              placeholder="Pesquisar propriedades, contratos, clientes..."
               className="w-80 pl-10 bg-gray-800/50 border-gray-700/50 text-white placeholder:text-gray-400 focus:border-blue-500 focus:bg-gray-800/70 transition-all"
             />
           </div>

@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# MCP configuration with sensitive tokens
+.cursor/mcp.json

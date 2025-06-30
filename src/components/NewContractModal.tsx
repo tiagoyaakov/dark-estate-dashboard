@@ -298,7 +298,7 @@ export const NewContractModal: React.FC<NewContractModalProps> = ({ isOpen, onCl
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
           >
-            <Icon className={`w-8 h-8 bg-gradient-to-r ${config.gradient} bg-clip-text text-transparent`} />
+            <Icon className="w-8 h-8 text-white" />
           </motion.div>
           
           <div>

@@ -12,6 +12,8 @@ export function useContracts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+
+
   // Buscar todos os contratos
   const fetchContracts = async () => {
     try {
@@ -44,11 +46,17 @@ export function useContracts() {
   // Criar um novo contrato
   const createContract = async (contractData: ContractInsert): Promise<Contract | null> => {
     try {
+      // Buscar usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
       console.log('📝 Criando contrato no banco:', contractData);
 
       const { data, error } = await supabase
         .from('contracts')
-        .insert([contractData])
+        .insert([{ ...contractData, created_by: user.id }])
         .select()
         .single();
 
@@ -117,31 +125,104 @@ export function useContracts() {
     }
   };
 
-  // Deletar um contrato (soft delete)
+  // Deletar um contrato (estratégia híbrida: hard delete → soft delete)
   const deleteContract = async (id: string): Promise<boolean> => {
     try {
-      console.log('🗑️ Deletando contrato:', id);
-
-      const { error } = await supabase
+      console.log('🗑️ [DEBUG] Iniciando deleção do contrato:', id);
+      
+      // Primeiro, verificar se o contrato existe
+      const { data: existingContract, error: checkError } = await supabase
         .from('contracts')
-        .update({ is_active: false })
-        .eq('id', id);
-
-      if (error) {
-        console.error('❌ Erro ao deletar contrato:', error);
-        toast.error(`Erro ao deletar contrato: ${error.message}`);
+        .select('id, numero, client_name')
+        .eq('id', id)
+        .single();
+      
+      if (checkError) {
+        console.error('❌ [DEBUG] Erro ao verificar contrato:', checkError);
+        toast.error(`Contrato não encontrado: ${checkError.message}`);
         return false;
       }
+      
+      console.log('🔍 [DEBUG] Contrato encontrado:', existingContract);
 
-      console.log('✅ Contrato deletado com sucesso');
-      toast.success('Contrato deletado com sucesso!');
-      
-      // Remover da lista local
-      setContracts(prev => prev.filter(contract => contract.id !== id));
-      
-      return true;
+      // ESTRATÉGIA 1: Tentar hard delete primeiro
+      console.log('💀 [DEBUG] Tentativa 1: Hard Delete...');
+      const { data: hardDeleteData, error: hardDeleteError } = await supabase
+        .from('contracts')
+        .delete()
+        .eq('id', id)
+        .select();
+
+      console.log('💀 [DEBUG] Resultado Hard Delete:', {
+        data: hardDeleteData,
+        error: hardDeleteError,
+        deletedCount: hardDeleteData?.length || 0
+      });
+
+      // Se hard delete funcionou (retornou dados deletados)
+      if (!hardDeleteError && hardDeleteData && hardDeleteData.length > 0) {
+        console.log('✅ [DEBUG] Hard Delete bem-sucedido!');
+        toast.success('Contrato deletado permanentemente!');
+        
+        // Remover da lista local
+        setContracts(prev => prev.filter(contract => contract.id !== id));
+        return true;
+      }
+
+      // ESTRATÉGIA 2: Hard delete falhou, verificar se ainda existe
+      console.log('🔄 [DEBUG] Hard Delete falhou ou foi bloqueado por RLS, verificando se contrato ainda existe...');
+      const { data: stillExists, error: checkAfterError } = await supabase
+        .from('contracts')
+        .select('id')
+        .eq('id', id)
+        .single();
+
+      if (!checkAfterError && stillExists) {
+        console.warn('⚠️ [DEBUG] Contrato ainda existe, RLS está bloqueando hard delete');
+        console.log('🔄 [DEBUG] Tentativa 2: Soft Delete (fallback)...');
+        
+        // Usar soft delete como fallback
+        const { data: softDeleteData, error: softDeleteError } = await supabase
+          .from('contracts')
+          .update({ is_active: false })
+          .eq('id', id)
+          .select();
+
+        console.log('🔄 [DEBUG] Resultado Soft Delete:', {
+          data: softDeleteData,
+          error: softDeleteError
+        });
+
+        if (softDeleteError) {
+          console.error('❌ [DEBUG] Soft Delete também falhou:', softDeleteError);
+          toast.error(`Erro ao deletar contrato: ${softDeleteError.message}`);
+          return false;
+        }
+
+        if (softDeleteData && softDeleteData.length > 0) {
+          console.log('✅ [DEBUG] Soft Delete bem-sucedido (contrato marcado como inativo)');
+          toast.success('Contrato removido com sucesso!');
+          
+          // Remover da lista local (soft delete remove da visualização)
+          setContracts(prev => prev.filter(contract => contract.id !== id));
+          return true;
+        } else {
+          console.error('❌ [DEBUG] Soft Delete não retornou dados');
+          toast.error('Erro ao deletar contrato: operação falhou');
+          return false;
+        }
+      } else {
+        // Contrato não existe mais, hard delete pode ter funcionado silenciosamente
+        console.log('✅ [DEBUG] Contrato não existe mais no banco - deleção bem-sucedida');
+        toast.success('Contrato deletado com sucesso!');
+        
+        // Remover da lista local
+        setContracts(prev => prev.filter(contract => contract.id !== id));
+        return true;
+      }
+
     } catch (err) {
-      console.error('💥 Erro inesperado ao deletar contrato:', err);
+      console.error('💥 [DEBUG] Erro inesperado ao deletar contrato:', err);
       toast.error('Erro inesperado ao deletar contrato');
       return false;
     }
@@ -214,7 +295,7 @@ export function useContracts() {
             );
           } else if (payload.eventType === 'DELETE') {
             const deletedContract = payload.old as Contract;
-            console.log('🗑️ Contrato deletado via real-time:', deletedContract);
+            console.log('🗑️ Contrato deletado permanentemente via real-time:', deletedContract);
             setContracts(prev => prev.filter(c => c.id !== deletedContract.id));
           }
         }

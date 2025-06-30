@@ -8,22 +8,34 @@ import { PropertyList } from "@/components/PropertyList";
 import { ReportsView } from "@/components/ReportsView";
 import { PortalsView } from "@/components/PortalsView";
 import { ClientsView } from "@/components/ClientsView";
+import { ClientsCRMView } from "@/components/ClientsCRMView";
+
 import { AgendaView } from "@/components/AgendaView";
-import { ConnectionsView } from "@/components/ConnectionsView";
+import { ConnectionsViewSimplified } from "@/components/ConnectionsViewSimplified";
 import { ContractsView } from "@/components/ContractsView";
+import { UserManagementView } from "@/components/UserManagementView";
+import { PermissionsManagementView } from "@/components/PermissionsManagementView";
+import { IsolationDebug } from "@/components/IsolationDebug";
 
 import { useProperties } from "@/hooks/useProperties";
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<"dashboard" | "properties" | "add-property" | "contracts" | "agenda" | "reports" | "portals" | "clients" | "connections">("dashboard");
+  const [currentView, setCurrentView] = useState<"dashboard" | "properties" | "contracts" | "agenda" | "reports" | "portals" | "clients" | "clients-crm" | "connections" | "users" | "permissions">("dashboard");
+  const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false);
   const { properties, loading, refetch } = useProperties();
 
   const handlePropertySubmit = () => {
     refetch();
-    setCurrentView("properties");
+    setIsPropertyModalOpen(false);
   };
 
   const renderContent = () => {
+    // Debug mode - acesse com ?debug=isolation na URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('debug') === 'isolation') {
+      return <IsolationDebug />;
+    }
+
     switch (currentView) {
       case "dashboard":
         return <DashboardContent 
@@ -32,9 +44,7 @@ const Index = () => {
           onNavigateToAgenda={() => setCurrentView("agenda")}
         />;
       case "properties":
-        return <PropertyList properties={properties} loading={loading} onAddNew={() => setCurrentView("add-property")} refetch={refetch} />;
-      case "add-property":
-        return <PropertyForm onSubmit={handlePropertySubmit} onCancel={() => setCurrentView("properties")} />;
+        return <PropertyList properties={properties} loading={loading} onAddNew={() => setIsPropertyModalOpen(true)} refetch={refetch} />;
       case "contracts":
         return <ContractsView />;
       case "agenda":
@@ -45,8 +55,14 @@ const Index = () => {
         return <PortalsView />;
       case "clients":
         return <ClientsView />;
+      case "clients-crm":
+        return <ClientsCRMView />;
       case "connections":
-        return <ConnectionsView />;
+        return <ConnectionsViewSimplified />;
+      case "users":
+        return <UserManagementView />;
+      case "permissions":
+        return <PermissionsManagementView />;
       default:
         return <DashboardContent properties={properties} loading={loading} />;
     }
@@ -56,7 +72,10 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white">
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
-          <AppSidebar currentView={currentView} onViewChange={setCurrentView} />
+          <AppSidebar 
+            currentView={currentView} 
+            onViewChange={setCurrentView}
+          />
           <div className="flex-1 flex flex-col">
             <DashboardHeader />
             <main className="flex-1 p-6 bg-gradient-to-br from-gray-950/50 to-gray-900/50">
@@ -65,6 +84,13 @@ const Index = () => {
           </div>
         </div>
       </SidebarProvider>
+      
+      {/* Modal de Adicionar Propriedade */}
+      <PropertyForm 
+        isOpen={isPropertyModalOpen}
+        onSubmit={handlePropertySubmit} 
+        onCancel={() => setIsPropertyModalOpen(false)} 
+      />
     </div>
   );
 };

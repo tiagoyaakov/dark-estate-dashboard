@@ -782,34 +782,43 @@ export function ContractsView() {
     if (deletingId === contract.id) return;
 
     const confirmed = window.confirm(
-      `⚠️ CONFIRMAÇÃO DE EXCLUSÃO ⚠️\n\n` +
-      `Tem certeza que deseja excluir o contrato?\n\n` +
+      `🗑️ CONFIRMAÇÃO DE EXCLUSÃO DO CONTRATO 🗑️\n\n` +
+      `Tem certeza que deseja excluir este contrato?\n\n` +
       `📋 Número: ${contract.numero}\n` +
       `👤 Cliente: ${contract.client_name || 'Não informado'}\n` +
       `🏠 Propriedade: ${contract.property_title || 'Não informado'}\n` +
       `💰 Valor: R$ ${typeof contract.valor === 'string' ? parseFloat(contract.valor || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : (contract.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\n` +
-      `⚠️ ATENÇÃO: Esta ação não pode ser desfeita!\n\n` +
-      `Clique em "OK" para confirmar a exclusão ou "Cancelar" para manter o contrato.`
+      `⚠️ O sistema tentará deletar permanentemente, mas pode usar\n` +
+      `remoção lógica se necessário por questões de segurança.\n\n` +
+      `Clique em "OK" para confirmar a exclusão.`
     );
 
     if (!confirmed) return;
 
     setDeletingId(contract.id);
     try {
-      console.log('🗑️ Deletando contrato:', contract.numero);
-      toast.loading('Excluindo contrato...', { id: 'delete-contract' });
+      console.log('🔥 [DEBUG] Iniciando processo de deleção no componente:', {
+        id: contract.id,
+        numero: contract.numero,
+        client_name: contract.client_name
+      });
+      toast.loading('Deletando contrato...', { id: 'delete-contract' });
       
       const success = await deleteContract(contract.id);
       
+      console.log('🔥 [DEBUG] Resultado da deleção no componente:', success);
+      
       if (success) {
-        toast.success('✅ Contrato excluído com sucesso!', { id: 'delete-contract' });
+        console.log('🔥 [DEBUG] Deleção bem-sucedida, mostrando toast de sucesso');
+        // A mensagem de sucesso será definida pela função deleteContract
       } else {
-        toast.error('❌ Erro ao excluir contrato', { id: 'delete-contract' });
+        console.log('🔥 [DEBUG] Deleção falhou, mostrando toast de erro');
+        // A mensagem de erro será definida pela função deleteContract
       }
       
     } catch (error) {
       console.error('❌ Erro ao deletar contrato:', error);
-      toast.error('❌ Erro inesperado ao excluir contrato', { id: 'delete-contract' });
+      toast.error('❌ Erro inesperado ao deletar contrato', { id: 'delete-contract' });
     } finally {
       setDeletingId(null);
     }
@@ -1291,53 +1300,7 @@ export function ContractsView() {
                 </TabsContent>
               ))}
 
-              {/* Contracts List for filtered tabs */}
-              {['todos', 'ativos', 'pendentes', 'vencendo', 'expirados', 'locacao', 'venda'].includes(selectedTab) && filteredContracts.length === 0 && (
-                <TabsContent value={selectedTab} className="space-y-4 mt-6">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.8 }}
-                  >
-                    <Card className="bg-gray-800/50 backdrop-blur-sm border-gray-700/60 shadow-lg">
-                      <CardContent className="p-12 text-center">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                          className="inline-block"
-                        >
-                          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        </motion.div>
-                        <h3 className="text-lg font-semibold text-white mb-2">Nenhum contrato encontrado</h3>
-                        <p className="text-gray-400 mb-4">
-                          {searchTerm ? 'Não encontramos contratos com os critérios de busca.' : 'Você ainda não possui contratos cadastrados.'}
-                        </p>
-                        <div className="flex gap-3 justify-center">
-                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button 
-                              variant="outline"
-                              className="border-blue-600 text-blue-400 hover:bg-blue-600/20 backdrop-blur-sm"
-                              onClick={() => setShowTemplateUploadModal(true)}
-                            >
-                              <Upload className="mr-2 h-4 w-4" />
-                              Upload Template
-                            </Button>
-                          </motion.div>
-                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button 
-                              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                              onClick={() => setShowNewContractModal(true)}
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Criar Primeiro Contrato
-                            </Button>
-                          </motion.div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                </TabsContent>
-              )}
+
             </Tabs>
           </motion.div>
         </motion.div>

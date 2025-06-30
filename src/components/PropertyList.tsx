@@ -288,14 +288,15 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
   console.log('🏠 PropertyList - Estado atual:', { 
     propertiesCount: properties.length, 
     loading,
-    properties: properties.slice(0, 2) // Log apenas as primeiras 2 para debug
+    properties: properties.slice(0, 2), // Log apenas as primeiras 2 para debug
+    propertiesWithImages: properties.filter(p => p.property_images && p.property_images.length > 0).length
   });
 
   const filteredProperties = properties.filter(property => {
     const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          property.address.toLowerCase().includes(searchTerm.toLowerCase());
     const statusMatch = statusFilter === "all" || property.status === statusFilter;
-    const typeMatch = typeFilter === "all" || property.property_type === typeFilter;
+    const typeMatch = typeFilter === "all" || property.type === typeFilter;
     return matchesSearch && statusMatch && typeMatch;
   });
 
@@ -336,7 +337,7 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
     }
   };
 
-  const getTypeLabel = (type: PropertyWithImages["property_type"]) => {
+  const getTypeLabel = (type: PropertyWithImages["type"]) => {
     const labels = {
       house: "Casa",
       apartment: "Apartamento", 
@@ -346,7 +347,7 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
     return labels[type];
   };
 
-  const getTypeColor = (type: PropertyWithImages["property_type"]) => {
+  const getTypeColor = (type: PropertyWithImages["type"]) => {
     switch (type) {
       case 'house':
         return 'bg-blue-500/20 text-blue-300 border-blue-400/50';
@@ -358,6 +359,28 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
         return 'bg-green-500/20 text-green-300 border-green-400/50';
       default:
         return 'bg-slate-500/20 text-slate-300 border-slate-400/50';
+    }
+  };
+
+  const getPurposeColor = (purpose: "Aluguel" | "Venda") => {
+    switch (purpose) {
+      case "Aluguel":
+        return "bg-cyan-500/20 text-cyan-300 border-cyan-400/50";
+      case "Venda":
+        return "bg-orange-500/20 text-orange-300 border-orange-400/50";
+      default:
+        return "bg-gray-500/20 text-gray-300 border-gray-400/50";
+    }
+  };
+
+  const getPurposeIcon = (purpose: "Aluguel" | "Venda") => {
+    switch (purpose) {
+      case "Aluguel":
+        return "🏠";
+      case "Venda":
+        return "🏢";
+      default:
+        return "🏠";
     }
   };
 
@@ -391,6 +414,7 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
   };
 
   const handlePreviousImage = (propertyId: string, totalImages: number) => {
+    console.log('⬅️ Imagem anterior:', { propertyId, totalImages, currentIndex: currentImageIndex[propertyId] || 0 });
     setCurrentImageIndex(prev => ({
       ...prev,
       [propertyId]: prev[propertyId] > 0 ? prev[propertyId] - 1 : totalImages - 1
@@ -398,6 +422,7 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
   };
 
   const handleNextImage = (propertyId: string, totalImages: number) => {
+    console.log('➡️ Próxima imagem:', { propertyId, totalImages, currentIndex: currentImageIndex[propertyId] || 0 });
     setCurrentImageIndex(prev => ({
       ...prev,
       [propertyId]: (prev[propertyId] || 0) < totalImages - 1 ? (prev[propertyId] || 0) + 1 : 0
@@ -409,6 +434,12 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
   };
 
   const handleOpenImageGallery = (property: PropertyWithImages, initialIndex: number = 0) => {
+    console.log('🖼️ Abrindo galeria de imagens:', { 
+      property: property.title, 
+      initialIndex, 
+      imagesCount: property.property_images?.length || 0,
+      images: property.property_images 
+    });
     setImageGalleryProperty(property);
     setGalleryInitialIndex(initialIndex);
     setIsImageGalleryOpen(true);
@@ -613,7 +644,7 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Buscar imóveis..."
+                placeholder="Pesquisar imóveis..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 bg-gray-900/50 border-gray-600 text-white placeholder-gray-400 focus:border-blue-400 focus:ring-blue-400/20"
@@ -626,7 +657,7 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
                 <Filter className="h-4 w-4 text-gray-400" />
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-40 bg-gray-900/50 border-gray-600 text-white">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder="Situação" />
                   </SelectTrigger>
                   <SelectContent className="bg-gray-900 border-gray-600">
                     <SelectItem value="all">Todos</SelectItem>
@@ -733,11 +764,6 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
                   initial={{ opacity: 0, y: 50, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -50, scale: 0.9 }}
-                  whileHover={{ 
-                    y: -10, 
-                    scale: 1.02,
-                    transition: { duration: 0.2 }
-                  }}
                   transition={{ 
                     delay: index * 0.1, 
                     duration: 0.6,
@@ -751,13 +777,22 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
                       <div className="relative h-56 bg-gray-700 rounded-t-xl flex items-center justify-center group overflow-hidden">
                         {property.property_images && property.property_images.length > 0 ? (
                           <>
-                            <motion.img 
-                              src={property.property_images[getCurrentImageIndex(property.id)].image_url} 
-                              alt={property.title}
-                              className="w-full h-full object-cover cursor-pointer transition-transform duration-300 group-hover:scale-110"
-                              onClick={() => handleOpenImageGallery(property, getCurrentImageIndex(property.id))}
-                              whileHover={{ scale: 1.05 }}
-                            />
+                            <div 
+                              className="w-full h-full cursor-pointer relative"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('🖱️ Clique na imagem detectado!', { property: property.title, imageIndex: getCurrentImageIndex(property.id) });
+                                handleOpenImageGallery(property, getCurrentImageIndex(property.id));
+                              }}
+                            >
+                              <img 
+                                src={property.property_images[getCurrentImageIndex(property.id)].image_url} 
+                                alt={property.title}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                draggable={false}
+                              />
+                            </div>
                             
                             {/* Image Navigation - only shows if more than 1 image */}
                             {property.property_images.length > 1 && (
@@ -765,9 +800,10 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
                                 <motion.button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    e.preventDefault();
                                     handlePreviousImage(property.id, property.property_images.length);
                                   }}
-                                  className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                  className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
                                   whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
                                 >
@@ -777,9 +813,10 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
                                 <motion.button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    e.preventDefault();
                                     handleNextImage(property.id, property.property_images.length);
                                   }}
-                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
                                   whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
                                 >
@@ -787,12 +824,13 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
                                 </motion.button>
                                 
                                 {/* Page Indicators */}
-                                <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-1">
+                                <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-1 z-10">
                                   {property.property_images.map((_, imgIndex) => (
                                     <motion.button
                                       key={imgIndex}
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                        e.preventDefault();
                                         setCurrentImageIndex(prev => ({
                                           ...prev,
                                           [property.id]: imgIndex
@@ -817,7 +855,7 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
                             )}
 
                             {/* Overlay Gradient */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                           </>
                         ) : (
                           <div className="flex flex-col items-center justify-center text-gray-500">
@@ -827,15 +865,17 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
                         )}
 
                         {/* Status Badge - Top Left */}
-                        <div className="absolute top-3 left-3">
+                        <div className="absolute top-3 left-3 z-20">
                           {getStatusBadge(property.status)}
                         </div>
+
+
 
                         {/* Type Badge - Top Right (if no images) */}
                         {(!property.property_images || property.property_images.length === 0) && (
                           <div className="absolute top-3 right-3">
-                            <Badge variant="outline" className={getTypeColor(property.property_type)}>
-                              {getTypeLabel(property.property_type)}
+                            <Badge variant="outline" className={getTypeColor(property.type)}>
+                              {getTypeLabel(property.type)}
                             </Badge>
                           </div>
                         )}
@@ -854,9 +894,14 @@ export function PropertyList({ properties, loading, onAddNew, refetch }: Propert
                           <CardTitle className="text-xl text-white mb-1 line-clamp-1 group-hover:text-blue-300 transition-colors">
                             {property.title}
                           </CardTitle>
-                          <Badge variant="outline" className={getTypeColor(property.property_type)}>
-                            {getTypeLabel(property.property_type)}
-                          </Badge>
+                          <div className="flex gap-2 flex-wrap">
+                            <Badge variant="outline" className={getTypeColor(property.type)}>
+                              {getTypeLabel(property.type)}
+                            </Badge>
+                            <Badge variant="outline" className={getPurposeColor(property.property_purpose)}>
+                              {getPurposeIcon(property.property_purpose)} {property.property_purpose}
+                            </Badge>
+                          </div>
                         </motion.div>
                         
                         <motion.div 

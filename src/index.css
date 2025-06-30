@@ -170,3 +170,56 @@
 .react-pdf__Page__annotations {
   display: none;
 }
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(75 85 99) rgb(31 41 55);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgb(31 41 55);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(75 85 99);
+  border-radius: 10px;
+  transition: background-color 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(107 114 128);
+}
+
+/* Scrollbar para modal de imóvel */
+.property-modal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(75 85 99) transparent;
+}
+
+.property-modal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.property-modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.property-modal-scroll::-webkit-scrollbar-thumb {
+  background: rgb(75 85 99);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: all 0.2s ease;
+}
+
+.property-modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(107 114 128);
+  background-clip: content-box;
+}

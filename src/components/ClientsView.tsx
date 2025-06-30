@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { useKanbanLeads } from '@/hooks/useKanbanLeads';
 import { KanbanLead, LeadStage } from '@/types/kanban';
+import { AddLeadModal } from '@/components/AddLeadModal';
 
 // Componente simplificado para partículas (otimizado)
 const FloatingParticle = ({ delay = 0 }) => (
@@ -291,20 +292,20 @@ const kanbanStages = [
 
 const getOrigemColor = (origem: string) => {
   switch (origem) {
-    case 'Site':
-      return 'bg-blue-500/20 text-blue-300 border-blue-400/50';
     case 'Facebook':
       return 'bg-indigo-500/20 text-indigo-300 border-indigo-400/50';
-    case 'Google Ads':
-      return 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50';
-    case 'OLX':
-      return 'bg-purple-500/20 text-purple-300 border-purple-400/50';
-    case 'ZAP Imóveis':
+    case 'Zap Imóveis':
       return 'bg-violet-500/20 text-violet-300 border-violet-400/50';
     case 'Viva Real':
       return 'bg-yellow-500/20 text-yellow-300 border-yellow-400/50';
+    case 'OLX':
+      return 'bg-purple-500/20 text-purple-300 border-purple-400/50';
     case 'Indicação':
       return 'bg-pink-500/20 text-pink-300 border-pink-400/50';
+    case 'Whatsapp':
+      return 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50';
+    case 'Website':
+      return 'bg-blue-500/20 text-blue-300 border-blue-400/50';
     default:
       return 'bg-slate-500/20 text-slate-300 border-slate-400/50';
   }
@@ -378,14 +379,16 @@ const LeadCard = ({ lead, isDragging = false }: LeadCardProps) => {
                 <DollarSign className="h-3 w-3 flex-shrink-0" />
                 <span>R$ {lead.valor.toLocaleString('pt-BR')}</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-400 text-xs">
-                <Calendar className="h-3 w-3 flex-shrink-0" />
-                <span>{new Date(lead.dataContato).toLocaleDateString('pt-BR')}</span>
-              </div>
+              {lead.dataContato && (
+                <div className="flex items-center gap-2 text-gray-400 text-xs">
+                  <Calendar className="h-3 w-3 flex-shrink-0" />
+                  <span>{new Date(lead.dataContato).toLocaleDateString('pt-BR')}</span>
+                </div>
+              )}
             </div>
 
             {/* Observações */}
-            {lead.observacoes && (
+            {lead.observacoes && lead.observacoes.trim() && (
               <div className="text-xs text-gray-400 bg-gray-900/50 p-2 rounded border-l-2 border-blue-500/30">
                 <MessageSquare className="h-3 w-3 inline mr-1" />
                 <span className="line-clamp-2">{lead.observacoes}</span>
@@ -414,7 +417,7 @@ const LeadCard = ({ lead, isDragging = false }: LeadCardProps) => {
   );
 };
 
-// Componente da coluna do kanban com zona de drop
+// Componente da coluna do kanban simplificado
 interface KanbanColumnProps {
   stage: typeof kanbanStages[0];
   leads: KanbanLead[];
@@ -492,6 +495,8 @@ export function ClientsView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [particles, setParticles] = useState<number[]>([]);
+  const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
+  const [leadToEdit, setLeadToEdit] = useState<KanbanLead | null>(null);
 
   // Usar o hook do kanban em vez de dados mock
   const { 
@@ -518,11 +523,16 @@ export function ClientsView() {
     setParticles(particleArray);
   }, []);
 
-  const filteredLeads = leads.filter(lead => 
-    lead.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.interesse.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredLeads = leads.filter(lead => {
+    if (!lead) return false;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      (lead.nome || '').toLowerCase().includes(searchLower) ||
+      (lead.email || '').toLowerCase().includes(searchLower) ||
+      (lead.interesse || '').toLowerCase().includes(searchLower)
+    );
+  });
 
   const getLeadsByStage = (stageTitle: string) => {
     return filteredLeads.filter(lead => lead.stage === stageTitle);
@@ -649,7 +659,13 @@ export function ClientsView() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg">
+                <Button 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+                  onClick={() => {
+                    setLeadToEdit(null);
+                    setIsAddLeadModalOpen(true);
+                  }}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Novo Lead
                 </Button>
@@ -781,6 +797,16 @@ export function ClientsView() {
           </motion.div>
         </div>
       </div>
+
+      {/* Modal de Adicionar/Editar Lead */}
+      <AddLeadModal
+        isOpen={isAddLeadModalOpen}
+        onClose={() => {
+          setIsAddLeadModalOpen(false);
+          setLeadToEdit(null);
+        }}
+        leadToEdit={leadToEdit}
+      />
     </div>
   );
 }
