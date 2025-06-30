@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,17 +19,12 @@ export function IsolationDebug() {
       // 2. Buscar todos os leads (sem filtro - para ver se RLS está funcionando)
       const { data: allLeads, error: leadsError } = await supabase
         .from('leads')
-        .select('id, name, user_id, created_at');
+        .select('id, name, created_at');
       
       // 3. Buscar todas as propriedades
       const { data: allProperties, error: propertiesError } = await supabase
         .from('properties')
-        .select('id, title, user_id, created_at');
-      
-      // 4. Buscar perfis de usuários
-      const { data: userProfiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('id, email, full_name, role');
+        .select('id, title, created_at');
       
       setDebugInfo({
         currentUser: {
@@ -39,20 +35,12 @@ export function IsolationDebug() {
         leads: {
           data: allLeads,
           error: leadsError,
-          total: allLeads?.length || 0,
-          withUserId: allLeads?.filter(l => l.user_id).length || 0,
-          withoutUserId: allLeads?.filter(l => !l.user_id).length || 0
+          total: allLeads?.length || 0
         },
         properties: {
           data: allProperties,
           error: propertiesError,
-          total: allProperties?.length || 0,
-          withUserId: allProperties?.filter(p => p.user_id).length || 0,
-          withoutUserId: allProperties?.filter(p => !p.user_id).length || 0
-        },
-        userProfiles: {
-          data: userProfiles,
-          error: profilesError
+          total: allProperties?.length || 0
         }
       });
     } catch (error) {
@@ -76,8 +64,7 @@ export function IsolationDebug() {
         email: 'teste@teste.com',
         phone: '11999999999',
         source: 'Manual',
-        stage: 'Novo Lead',
-        user_id: user.id // Forçar user_id
+        stage: 'Novo Lead'
       };
 
       console.log('🧪 Criando lead de teste:', testLead);
@@ -93,7 +80,7 @@ export function IsolationDebug() {
         alert(`Erro: ${error.message}`);
       } else {
         console.log('✅ Lead criado:', data);
-        alert(`Lead criado com sucesso! ID: ${data.id}, user_id: ${data.user_id}`);
+        alert(`Lead criado com sucesso! ID: ${data.id}`);
         runDebug(); // Atualizar debug
       }
     } catch (error) {
@@ -137,8 +124,6 @@ export function IsolationDebug() {
                 <h3 className="text-white font-semibold mb-2">📋 Leads</h3>
                 <div className="text-gray-300 mb-2">
                   <p>Total: {debugInfo.leads.total}</p>
-                  <p>Com user_id: {debugInfo.leads.withUserId}</p>
-                  <p>Sem user_id: {debugInfo.leads.withoutUserId}</p>
                   {debugInfo.leads.error && (
                     <p className="text-red-400">Erro: {debugInfo.leads.error.message}</p>
                   )}
@@ -153,8 +138,6 @@ export function IsolationDebug() {
                 <h3 className="text-white font-semibold mb-2">🏠 Propriedades</h3>
                 <div className="text-gray-300 mb-2">
                   <p>Total: {debugInfo.properties.total}</p>
-                  <p>Com user_id: {debugInfo.properties.withUserId}</p>
-                  <p>Sem user_id: {debugInfo.properties.withoutUserId}</p>
                   {debugInfo.properties.error && (
                     <p className="text-red-400">Erro: {debugInfo.properties.error.message}</p>
                   )}
@@ -163,18 +146,10 @@ export function IsolationDebug() {
                   {JSON.stringify(debugInfo.properties.data, null, 2)}
                 </pre>
               </div>
-
-              {/* Usuários */}
-              <div className="bg-gray-900/50 p-4 rounded-lg">
-                <h3 className="text-white font-semibold mb-2">👥 Usuários</h3>
-                <pre className="text-xs text-gray-400 overflow-auto max-h-40">
-                  {JSON.stringify(debugInfo.userProfiles.data, null, 2)}
-                </pre>
-              </div>
             </div>
           )}
         </CardContent>
       </Card>
     </div>
   );
-} 
+}

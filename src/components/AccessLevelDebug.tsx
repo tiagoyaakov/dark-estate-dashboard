@@ -16,15 +16,11 @@ interface AccessDebugInfo {
   visibleLeads: Array<{
     id: string;
     name: string;
-    owner_name: string;
-    owner_role: string;
-    is_own: boolean;
+    source: string;
+    stage: string;
   }>;
-  totalLeadsByUser: Array<{
-    user_name: string;
-    user_role: string;
-    lead_count: number;
-  }>;
+  allLeads: number;
+  totalProperties: number;
 }
 
 export function AccessLevelDebug() {
@@ -40,39 +36,15 @@ export function AccessLevelDebug() {
       // 1. Buscar leads visíveis para o usuário atual
       const { data: visibleLeads, error: leadsError } = await supabase
         .from('leads')
-        .select(`
-          id,
-          name,
-          user_id,
-          user_profiles!user_id(
-            full_name,
-            role
-          )
-        `)
+        .select('id, name, source, stage')
         .order('created_at', { ascending: false });
 
       if (leadsError) throw leadsError;
 
-      // 2. Buscar estatísticas gerais (apenas admin/gestor vê)
-      let totalStats = [];
-      if (isManager) {
-        const { data: stats, error: statsError } = await supabase
-          .from('user_profiles')
-          .select(`
-            id,
-            full_name,
-            role,
-            leads!user_id(count)
-          `);
-
-        if (!statsError && stats) {
-          totalStats = stats.map(user => ({
-            user_name: user.full_name,
-            user_role: user.role,
-            lead_count: user.leads?.length || 0
-          }));
-        }
-      }
+      // 2. Contar todas as propriedades
+      const { count: propertiesCount } = await supabase
+        .from('properties')
+        .select('*', { count: 'exact', head: true });
 
       const debugData: AccessDebugInfo = {
         currentUser: {
@@ -84,11 +56,11 @@ export function AccessLevelDebug() {
         visibleLeads: (visibleLeads || []).map(lead => ({
           id: lead.id,
           name: lead.name,
-          owner_name: (lead.user_profiles as any)?.full_name || 'Desconhecido',
-          owner_role: (lead.user_profiles as any)?.role || 'Desconhecido',
-          is_own: lead.user_id === profile.id
+          source: lead.source,
+          stage: lead.stage
         })),
-        totalLeadsByUser: totalStats
+        allLeads: visibleLeads?.length || 0,
+        totalProperties: propertiesCount || 0
       };
 
       setDebugInfo(debugData);
@@ -151,11 +123,11 @@ export function AccessLevelDebug() {
                 <div>
                   <p className="font-medium">{lead.name}</p>
                   <p className="text-sm text-gray-600">
-                    Proprietário: {lead.owner_name} ({lead.owner_role})
+                    Origem: {lead.source} | Estágio: {lead.stage}
                   </p>
                 </div>
-                <Badge variant={lead.is_own ? 'default' : 'outline'}>
-                  {lead.is_own ? '✅ PRÓPRIO' : '👁️ DE OUTRO'}
+                <Badge variant="outline">
+                  Lead #{lead.id.substring(0, 8)}
                 </Badge>
               </div>
             ))}
@@ -166,26 +138,23 @@ export function AccessLevelDebug() {
         </CardContent>
       </Card>
 
-      {isManager && (
-        <Card>
-          <CardHeader>
-            <CardTitle>📊 Estatísticas Gerais (apenas Gestor/Admin)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {debugInfo.totalLeadsByUser.map((stat, index) => (
-                <div key={index} className="flex items-center justify-between p-2 border rounded">
-                  <div>
-                    <p className="font-medium">{stat.user_name}</p>
-                    <Badge variant="outline">{stat.user_role}</Badge>
-                  </div>
-                  <Badge>{stat.lead_count} leads</Badge>
-                </div>
-              ))}
+      <Card>
+        <CardHeader>
+          <CardTitle>📊 Estatísticas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-2 border rounded">
+              <span>Total de Leads</span>
+              <Badge>{debugInfo.allLeads}</Badge>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div className="flex items-center justify-between p-2 border rounded">
+              <span>Total de Propriedades</span>
+              <Badge>{debugInfo.totalProperties}</Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -196,7 +165,7 @@ export function AccessLevelDebug() {
             {debugInfo.currentUser.role === 'corretor' && (
               <div className="p-3 bg-blue-50 rounded border-l-4 border-blue-400">
                 <p className="font-medium text-blue-800">👤 CORRETOR</p>
-                <p className="text-blue-700">Deve ver APENAS seus próprios leads</p>
+                <p className="text-blue-700">Deve ver APENAS seus próprios leads (quando implementado RLS)</p>
               </div>
             )}
             {debugInfo.currentUser.role === 'gestor' && (

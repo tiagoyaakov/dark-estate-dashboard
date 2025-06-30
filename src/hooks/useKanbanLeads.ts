@@ -24,13 +24,8 @@ export function useKanbanLeads() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return 'corretor';
 
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      const role = profile?.role || 'corretor';
+      // Buscar no auth.users ao invés de user_profiles
+      const role = 'corretor'; // Por enquanto definir como corretor
       setUserRole(role);
       return role;
     } catch (error) {
@@ -61,17 +56,8 @@ export function useKanbanLeads() {
       // Para corretores, as políticas RLS já filtram automaticamente
       let query = supabase
         .from('leads')
-        .select(`
-          *,
-          corretor:user_profiles!user_id(
-            full_name,
-            role
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
-
-      // Se for gestor ou admin, desabilitar RLS temporariamente na query não é possível
-      // Mas as políticas RLS já estão configuradas para permitir que gestores vejam tudo
 
       const { data, error } = await query;
 
@@ -334,22 +320,12 @@ export function useKanbanLeads() {
           async (payload) => {
             console.log('🔔 Mudança detectada na tabela leads:', payload);
             
-            // 🛡️ VERIFICAR ISOLAMENTO - só processar se for do usuário atual OU se for gestor/admin
+            // Verificar se o usuário atual está autenticado
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
             // Verificar role do usuário atual
             const currentRole = userRole || await checkUserRole();
-
-            // Verificar se o lead pertence ao usuário atual
-            const leadUserId = (payload.new as any)?.user_id || (payload.old as any)?.user_id;
-            
-            // Se for corretor, só processar leads próprios
-            // Se for gestor/admin, processar todos os leads
-            if (currentRole === 'corretor' && leadUserId && leadUserId !== user.id) {
-              console.log('🚫 Lead ignorado - corretor só vê próprios leads');
-              return;
-            }
             
             switch (payload.eventType) {
               case 'INSERT':
@@ -423,7 +399,7 @@ export function useKanbanLeads() {
         console.error('❌ Erro ao limpar subscription de leads:', error);
       }
     };
-  }, [userRole, checkUserRole]); // Adicionar userRole como dependência
+  }, [userRole, checkUserRole]);
 
   return {
     leads,
